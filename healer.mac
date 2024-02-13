@@ -1,6 +1,6 @@
 Sub Main
 
-if ${Me.class} != CLR /call NotAHealer
+/if ${Me.class} != CLR /call NotAHealer
 
 /echo "Class is cleric"
 
