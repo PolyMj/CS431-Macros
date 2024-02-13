@@ -1,2 +1,5 @@
+Sub Main
 
+/echo Hello World
 
+/return
