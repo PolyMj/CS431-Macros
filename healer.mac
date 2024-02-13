@@ -1,5 +1,13 @@
 Sub Main
 
-/echo Hello World
+if ${Me.class} != CLR /call NotAHealer
+
+/echo "Class is cleric"
+
+/return
+
+Sub NotAHealer
+
+/echo "Class is NOT cleric"
 
 /return
