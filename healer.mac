@@ -1,6 +1,6 @@
 Sub Main
 
-/if !${Me.Class.HealerType} /call NotAHealer
+/if (!${Me.Class.HealerType}) /call NotAHealer
 
 /echo "Class is cleric"
 
