@@ -2,12 +2,12 @@ Sub Main
 
 /if (!${Me.Class.HealerType}) /call NotAHealer
 
-/echo "Class is cleric"
+/echo "Class is a healer"
 
 /return
 
 Sub NotAHealer
 
-/echo "Class is NOT cleric"
+/echo "Class is NOT a healer. Exiting..."
+
 /endmacro
-/return
