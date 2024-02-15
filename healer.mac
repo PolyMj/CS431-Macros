@@ -3,11 +3,47 @@ Sub Main
 /if (!${Me.Class.HealerType}) /call NotAHealer
 
 /echo "Class is a healer"
+/echo ${Me.PctMana}
+/mqtarget tank
+
+/call FindTank
+/target ${member}
+/echo ${Me.TargetOfTarget.Name}
+/cast "Yaulp"
 
 /return
+
+
 
 Sub NotAHealer
 
 /echo "Class is NOT a healer. Exiting..."
 
 /endmacro
+
+
+
+Sub FindTank
+
+/if (!${Me.Grouped}) {
+	/echo Not grouped
+	/return
+}
+/echo Is grouped
+
+/echo I have ${Group} members
+
+/declare j int outer
+/declare member string outer
+/for j 0 to ${Group} {
+	/echo ${j}
+	/if (${Group.Member[${j}].Class.ShortName.Equal[ROG]}) {
+		/echo Is a rogue
+		/varset member ${Group.Member[${j}].Name}
+	}
+}
+/next j
+
+/echo member is ${member}
+
+/return
