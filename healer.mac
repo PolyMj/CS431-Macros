@@ -1,5 +1,19 @@
 Sub Main
 
+| Spellset?: | Heal | Buff | Buff | Attack
+| Create list of buff spells
+
+/declare HealSpell outer "Greater Healing"
+/declare BuffSpell outer "Holy Armor"
+
+/declare
+
+/memspellset HealBuff
+
+| Enter combat state: Health drops
+| Once you heal, your own combat state will be set to true until enemy dies
+
+
 /if (!${Me.Class.HealerType}) /call NotAHealer
 
 /echo "Class is a healer"
@@ -8,9 +22,54 @@ Sub Main
 
 /call FindTank
 /target ${member}
-/echo ${Me.TargetOfTarget.Name}
-/cast "Yaulp"
+/declare TankTarget outer
+/echo Tank's target is ${TankTarget}
 
+/while (1) {	
+	/varset TankTarget ${Me.TargetOfTarget.Name}
+	/echo ${TankTarget}
+
+	/if (${TankTarget.Equal[NULL]}) {
+		/call OutCombat
+	} else {
+		/call InCombat
+	}
+
+
+	/delay 15
+}
+
+/return
+
+
+Sub InCombat
+/echo In combat
+/echo ${Target.PctHPs}
+/if (${Target.PctHPs} <- 50) {
+	/cast ${HealSpell}
+}
+/return
+
+
+
+Sub OutCombat
+/echo not in combat
+
+/if (${Me.PctMana} < 30) {
+	/sit
+	/while (${Me.PctMana} < 40) {
+		/echo Sitting for mana...
+		/delay 30
+	}
+	/sit
+}
+
+/echo Spell - ${Target.Buff[${BuffSpell}].Name}
+/if (${Target.Buff[${BuffSpell}].ID}) {
+	/echo Has Buff
+} else {
+	/cast ${BuffSpell}
+}
 /return
 
 
@@ -20,6 +79,15 @@ Sub NotAHealer
 /echo "Class is NOT a healer. Exiting..."
 
 /endmacro
+
+
+
+Sub CheckForBuff
+
+
+
+/return
+
 
 
 
@@ -35,15 +103,20 @@ Sub FindTank
 
 /declare j int outer
 /declare member string outer
+/declare cls string outer
 /for j 0 to ${Group} {
 	/echo ${j}
-	/if (${Group.Member[${j}].Class.ShortName.Equal[ROG]}) {
-		/echo Is a rogue
+	/varset cls ${Group.Member[${j}].Class.ShortName}
+	/if (${cls.Equal[WAR]} || ${cls.Equal[PAL]} || ${cls.Equal[SHD]}) {
+		/echo ${Group.Member[${j}].Name} is a tank
 		/varset member ${Group.Member[${j}].Name}
 	}
+	|else {
+	|	/echo ${Group.Member[${j}].Name} is not a tank
+	|}
 }
 /next j
 
-/echo member is ${member}
+/echo Chosen tank is ${member}
 
 /return
