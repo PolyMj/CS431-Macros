@@ -8,7 +8,7 @@ Sub Main
 
 /call FindTank
 /target ${member}
-/echo ${Me.TargetOfTarget.Name}
+/echo Tank's targer is ${Me.TargetOfTarget.Name}
 /cast "Yaulp"
 
 /return
@@ -35,15 +35,20 @@ Sub FindTank
 
 /declare j int outer
 /declare member string outer
+/declare cls string outer
 /for j 0 to ${Group} {
 	/echo ${j}
-	/if (${Group.Member[${j}].Class.ShortName.Equal[ROG]}) {
-		/echo Is a rogue
+	/varset cls ${Group.Member[${j}].Class.ShortName}
+	/if (${cls.Equal[WAR]} || ${cls.Equal[PAL]} || ${cls.Equal[SHD]}) {
+		/echo ${Group.Member[${j}].Name} is a tank
 		/varset member ${Group.Member[${j}].Name}
+	}
+	else {
+		/echo ${Group.Member[${j}].Name} is not a tank
 	}
 }
 /next j
 
-/echo member is ${member}
+/echo Chosen tank is ${member}
 
 /return
