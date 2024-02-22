@@ -3,12 +3,21 @@ Sub Main
 | Spellset?: | Heal | Buff | Buff | Attack
 | Create list of buff spells
 
-/declare HealSpell outer "Greater Healing"
-/declare BuffSpell outer "Holy Armor"
+/declare Tank string outer
+
+/declare HealSpell outer Me.Gem[1]
+/declare BuffSpell_1 outer Me.Gem[2]
+/declare BuffSpell_2 outer Me.Gem[3]
+/declare AtkSpell outer Me.Gem[4]
+
+/echo ${${HealSpell}.Name}
+/echo ${${BuffSpell_1}.Name}
+/echo ${${BuffSpell_2}.Name}
+/echo ${${AtkSpell}.Name}
 
 /declare
 
-/memspellset HealBuff
+/memspellset HBBA
 
 | Enter combat state: Health drops
 | Once you heal, your own combat state will be set to true until enemy dies
@@ -21,11 +30,11 @@ Sub Main
 /mqtarget tank
 
 /call FindTank
-/target ${member}
+/target ${Tank}
 /declare TankTarget outer
 /echo Tank's target is ${TankTarget}
 
-/while (1) {	
+/while (1) {
 	/varset TankTarget ${Me.TargetOfTarget.Name}
 	/echo ${TankTarget}
 
@@ -45,8 +54,14 @@ Sub Main
 Sub InCombat
 /echo In combat
 /echo ${Target.PctHPs}
-/if (${Target.PctHPs} <- 50) {
-	/cast ${HealSpell}
+/if (${Target.PctHPs} < 50) {
+	/cast ${${HealSpell}.Name}
+}
+
+/if (${Me.PctMana} > 30) {
+	/target ${Me.TargetOfTarget.Name}
+	/cast ${${AtkSpell}.Name}
+	/target ${Tank}
 }
 /return
 
@@ -64,28 +79,26 @@ Sub OutCombat
 	/sit
 }
 
-/echo Spell - ${Target.Buff[${BuffSpell}].Name}
-/if (${Target.Buff[${BuffSpell}].ID}) {
-	/echo Has Buff
-} else {
-	/cast ${BuffSpell}
-}
+/call CastBuff ${BuffSpell_1}
+/call CastBuff ${BuffSpell_2}
+
 /return
 
 
-
 Sub NotAHealer
-
 /echo "Class is NOT a healer. Exiting..."
-
 /endmacro
 
 
-
-Sub CheckForBuff
-
-
-
+Sub CastBuff(BuffSpell)
+/declare BuffStatus local ${Target.Buff[${${BuffSpell}.Name}].ID}
+/echo Trying ${${BuffSpell}.Name}...
+/if (${BuffStatus}) {
+	/echo Has Buff
+} else {
+	/cast ${${BuffSpell}.Name}
+	/delay ${Math.Calc[${${BuffSpell}.CastTime.Raw}/100]}
+}
 /return
 
 
@@ -102,14 +115,13 @@ Sub FindTank
 /echo I have ${Group} members
 
 /declare j int outer
-/declare member string outer
 /declare cls string outer
 /for j 0 to ${Group} {
 	/echo ${j}
 	/varset cls ${Group.Member[${j}].Class.ShortName}
 	/if (${cls.Equal[WAR]} || ${cls.Equal[PAL]} || ${cls.Equal[SHD]}) {
 		/echo ${Group.Member[${j}].Name} is a tank
-		/varset member ${Group.Member[${j}].Name}
+		/varset Tank ${Group.Member[${j}].Name}
 	}
 	|else {
 	|	/echo ${Group.Member[${j}].Name} is not a tank
@@ -117,6 +129,6 @@ Sub FindTank
 }
 /next j
 
-/echo Chosen tank is ${member}
+/echo Chosen tank is ${Tank}
 
 /return
