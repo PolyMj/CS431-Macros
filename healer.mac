@@ -32,12 +32,11 @@ Sub Main
 /call FindTank
 /target ${Tank}
 /declare TankTarget outer
-/echo Tank's target is ${TankTarget}
 
 /while (1) {
 	/target ${Tank}
 	/varset TankTarget ${Me.TargetOfTarget.Name}
-	/echo ${TankTarget}
+	/echo Tank's target is ${TankTarget}
 
 	/if (${TankTarget.Equal[NULL]}) {
 		/call OutCombat
@@ -53,19 +52,18 @@ Sub Main
 
 
 Sub InCombat
-/echo In combat
+/echo Tank in combat
 
-/echo ${Target.PctHPs}
+/echo Tank health : ${Target.PctHPs}%
 /if (${Target.PctHPs} < 70) {
+	/echo Casting heal : ${${HealSpell}.Name}
 	/cast "${${HealSpell}.Name}"
 }
 
 /if (${Me.PctMana} > 30) {
-	/echo Attack Spell, casting ${${AtkSpell}.Name}
+	/echo Casting atk : ${${AtkSpell}.Name}
 	/target ${Me.TargetOfTarget.Name}
-	/delay 20
 	/cast "${${AtkSpell}.Name}"
-	/delay 20
 	/target ${Tank}
 }
 
@@ -74,7 +72,7 @@ Sub InCombat
 
 
 Sub OutCombat
-/echo not in combat
+/echo Tank not in combat
 
 /if (${Me.PctMana} < 30) {
 	/sit
@@ -98,10 +96,10 @@ Sub NotAHealer
 
 Sub CastBuff(BuffSpell)
 /declare BuffStatus local ${Target.Buff[${${BuffSpell}.Name}].ID}
-/echo Trying ${${BuffSpell}.Name}...
 /if (${BuffStatus}) {
-	/echo Has Buff
+	/echo Already has Buff : ${${BuffSpell}.Name}
 } else {
+	/echo Buffing with : ${${BuffSpell}.Name}
 	/cast "${${BuffSpell}.Name}"
 	/delay ${Math.Calc[${${BuffSpell}.CastTime.Raw}/100]}
 }
