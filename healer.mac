@@ -1,7 +1,7 @@
 Sub Main
 
-| Spellset?: | Heal | Buff | Buff | Attack
-| Create list of buff spells?
+| Spellset: | Heal | Buff | Buff | Attack
+/memspellset HBBA
 
 /declare Tank string outer
 
@@ -15,9 +15,6 @@ Sub Main
 /echo ${${BuffSpell_2}.Name}
 /echo ${${AtkSpell}.Name}
 
-/declare
-
-/memspellset HBBA
 
 | Enter combat state: Health drops
 | Once you heal, your own combat state will be set to true until enemy dies
