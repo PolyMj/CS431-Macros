@@ -54,16 +54,21 @@ Sub Main
 
 Sub InCombat
 /echo In combat
+
 /echo ${Target.PctHPs}
 /if (${Target.PctHPs} < 70) {
-	/cast ${${HealSpell}.Name}
+	/cast "${${HealSpell}.Name}"
 }
 
 /if (${Me.PctMana} > 30) {
+	/echo Attack Spell, casting ${${AtkSpell}.Name}
 	/target ${Me.TargetOfTarget.Name}
-	/cast ${${AtkSpell}.Name}
+	/delay 20
+	/cast "${${AtkSpell}.Name}"
+	/delay 20
 	/target ${Tank}
 }
+
 /return
 
 
@@ -97,7 +102,7 @@ Sub CastBuff(BuffSpell)
 /if (${BuffStatus}) {
 	/echo Has Buff
 } else {
-	/cast ${${BuffSpell}.Name}
+	/cast "${${BuffSpell}.Name}"
 	/delay ${Math.Calc[${${BuffSpell}.CastTime.Raw}/100]}
 }
 /return
