@@ -1,5 +1,25 @@
 Sub Main
 
+| Spellset: | Heal | Buff | Buff | Attack
+/memspellset HBBA
+
+/declare Tank string outer
+
+/declare HealSpell outer Me.Gem[1]
+/declare BuffSpell_1 outer Me.Gem[2]
+/declare BuffSpell_2 outer Me.Gem[3]
+/declare AtkSpell outer Me.Gem[4]
+
+/echo ${${HealSpell}.Name}
+/echo ${${BuffSpell_1}.Name}
+/echo ${${BuffSpell_2}.Name}
+/echo ${${AtkSpell}.Name}
+
+
+| Enter combat state: Health drops
+| Once you heal, your own combat state will be set to true until enemy dies
+
+
 /if (!${Me.Class.HealerType}) /call NotAHealer
 
 /echo "Class is a healer"
@@ -7,19 +27,81 @@ Sub Main
 /mqtarget tank
 
 /call FindTank
-/target ${member}
-/echo ${Me.TargetOfTarget.Name}
-/cast "Yaulp"
+/target ${Tank}
+/declare TankTarget outer
+
+/while (1) {
+	/target ${Tank}
+	/varset TankTarget ${Me.TargetOfTarget.Name}
+	/echo Tank's target is ${TankTarget}
+
+	/if (${TankTarget.Equal[NULL]}) {
+		/call OutCombat
+	} else {
+		/call InCombat
+	}
+
+
+	/delay 15
+}
+
+/return
+
+
+Sub InCombat
+/echo Tank in combat
+
+/echo Tank health : ${Target.PctHPs}%
+/if (${Target.PctHPs} < 70) {
+	/echo Casting heal : ${${HealSpell}.Name}
+	/cast "${${HealSpell}.Name}"
+}
+
+/if (${Me.PctMana} > 30) {
+	/echo Casting atk : ${${AtkSpell}.Name}
+	/target ${Me.TargetOfTarget.Name}
+	/cast "${${AtkSpell}.Name}"
+	/target ${Tank}
+}
 
 /return
 
 
 
+Sub OutCombat
+/echo Tank not in combat
+
+/if (${Me.PctMana} < 30) {
+	/sit
+	/while (${Me.PctMana} < 40) {
+		/echo Sitting for mana...
+		/delay 30
+	}
+	/sit
+}
+
+/call CastBuff ${BuffSpell_1}
+/call CastBuff ${BuffSpell_2}
+
+/return
+
+
 Sub NotAHealer
-
 /echo "Class is NOT a healer. Exiting..."
-
 /endmacro
+
+
+Sub CastBuff(BuffSpell)
+/declare BuffStatus local ${Target.Buff[${${BuffSpell}.Name}].ID}
+/if (${BuffStatus}) {
+	/echo Already has Buff : ${${BuffSpell}.Name}
+} else {
+	/echo Buffing with : ${${BuffSpell}.Name}
+	/cast "${${BuffSpell}.Name}"
+	/delay ${Math.Calc[${${BuffSpell}.CastTime.Raw}/100]}
+}
+/return
+
 
 
 
@@ -34,16 +116,20 @@ Sub FindTank
 /echo I have ${Group} members
 
 /declare j int outer
-/declare member string outer
+/declare cls string outer
 /for j 0 to ${Group} {
 	/echo ${j}
-	/if (${Group.Member[${j}].Class.ShortName.Equal[ROG]}) {
-		/echo Is a rogue
-		/varset member ${Group.Member[${j}].Name}
+	/varset cls ${Group.Member[${j}].Class.ShortName}
+	/if (${cls.Equal[WAR]} || ${cls.Equal[PAL]} || ${cls.Equal[SHD]}) {
+		/echo ${Group.Member[${j}].Name} is a tank
+		/varset Tank ${Group.Member[${j}].Name}
 	}
+	|else {
+	|	/echo ${Group.Member[${j}].Name} is not a tank
+	|}
 }
 /next j
 
-/echo member is ${member}
+/echo Chosen tank is ${Tank}
 
 /return
