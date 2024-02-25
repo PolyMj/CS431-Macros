@@ -13,11 +13,11 @@ Sub Main
 /echo ${${HealSpell}.Name}
 /echo ${${BuffSpell_1}.Name}
 /echo ${${BuffSpell_2}.Name}
-/echo ${${AtkSpell}.Name}
+|/echo ${${AtkSpell}.Name}
 
 
 | Enter combat state: Health drops
-| Once you heal, your own combat state will be set to true until enemy dies
+| Once you heal, your own combat state will be set to active until enemy dies
 
 
 /if (!${Me.Class.HealerType}) /call NotAHealer
@@ -52,17 +52,24 @@ Sub InCombat
 /echo Tank in combat
 
 /echo Tank health : ${Target.PctHPs}%
-/if (${Target.PctHPs} < 70) {
+/if (${Target.PctHPs} < 80) {
 	/echo Casting heal : ${${HealSpell}.Name}
 	/cast "${${HealSpell}.Name}"
 }
-
-/if (${Me.PctMana} > 30) {
-	/echo Casting atk : ${${AtkSpell}.Name}
-	/target ${Me.TargetOfTarget.Name}
-	/cast "${${AtkSpell}.Name}"
-	/target ${Tank}
+/if (${Me.PctHPs} < 100) {
+	/echo Healing myself
+	/mqtarget myself
+	/cast "${${HealSpell}.Name}"
+	/mqtarget Tank
 }
+
+|This does not work quite right, commenting out for now
+|/if (${Me.PctMana} > 30) {
+|	/echo Casting atk : ${${AtkSpell}.Name}
+|	/target ${Me.TargetOfTarget.Name}
+|	/cast "${${AtkSpell}.Name}"
+|	/target ${Tank}
+|}
 
 /return
 
@@ -71,9 +78,15 @@ Sub InCombat
 Sub OutCombat
 /echo Tank not in combat
 
-/if (${Me.PctMana} < 30) {
-	/sit
-	/while (${Me.PctMana} < 40) {
+/if (${Me.PctMana} < 50) {
+	/while (${Me.PctMana} < 100) {
+		/if (${Me.CombatState.Equal[COMBAT]} || ${Target.PctHPs} < 100) {
+			/stand
+			/break
+		}
+		/if (!${Me.Sitting}) {
+			/sit
+		}
 		/echo Sitting for mana...
 		/delay 30
 	}
