@@ -16,8 +16,9 @@ Sub Main
 |/echo ${${AtkSpell}.Name}
 
 
-| Enter combat state: Health drops
-| Once you heal, your own combat state will be set to active until enemy dies
+| Idea: Enter combat state when tank's health drops
+	| Once you heal, your own combat state will be set to active until enemy dies
+| Currently, just enters combat once the tank is targeting something
 
 
 /if (!${Me.Class.HealerType}) /call NotAHealer
