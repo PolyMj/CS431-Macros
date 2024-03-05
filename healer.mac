@@ -1,17 +1,24 @@
 Sub Main
 
-| Spellset?: | Heal | Buff | Buff | Attack
-| Create list of buff spells
+| Spellset: | Heal | Buff | Buff | Attack
+/memspellset HBBA
 
-/declare HealSpell outer "Greater Healing"
-/declare BuffSpell outer "Holy Armor"
+/declare Tank string outer
 
-/declare
+/declare HealSpell outer Me.Gem[1]
+/declare BuffSpell_1 outer Me.Gem[2]
+/declare BuffSpell_2 outer Me.Gem[3]
+/declare AtkSpell outer Me.Gem[4]
 
-/memspellset HealBuff
+/echo ${${HealSpell}.Name}
+/echo ${${BuffSpell_1}.Name}
+/echo ${${BuffSpell_2}.Name}
+|/echo ${${AtkSpell}.Name}
 
-| Enter combat state: Health drops
-| Once you heal, your own combat state will be set to true until enemy dies
+
+| Idea: Enter combat state when tank's health drops
+	| Once you heal, your own combat state will be set to active until enemy dies
+| Currently, just enters combat once the tank is targeting something
 
 
 /if (!${Me.Class.HealerType}) /call NotAHealer
@@ -21,13 +28,13 @@ Sub Main
 /mqtarget tank
 
 /call FindTank
-/target ${member}
+/target ${Tank}
 /declare TankTarget outer
-/echo Tank's target is ${TankTarget}
 
-/while (1) {	
+/while (1) {
+	/target ${Tank}
 	/varset TankTarget ${Me.TargetOfTarget.Name}
-	/echo ${TankTarget}
+	/echo Tank's target is ${TankTarget}
 
 	/if (${TankTarget.Equal[NULL]}) {
 		/call OutCombat
@@ -43,49 +50,70 @@ Sub Main
 
 
 Sub InCombat
-/echo In combat
-/echo ${Target.PctHPs}
-/if (${Target.PctHPs} <- 50) {
-	/cast ${HealSpell}
+/echo Tank in combat
+
+/echo Tank health : ${Target.PctHPs}%
+/if (${Target.PctHPs} < 80) {
+	/echo Casting heal : ${${HealSpell}.Name}
+	/cast "${${HealSpell}.Name}"
 }
+/if (${Me.PctHPs} < 100) {
+	/echo Healing myself
+	/mqtarget myself
+	/cast "${${HealSpell}.Name}"
+	/mqtarget Tank
+}
+
+|This does not work quite right, commenting out for now
+|/if (${Me.PctMana} > 30) {
+|	/echo Casting atk : ${${AtkSpell}.Name}
+|	/target ${Me.TargetOfTarget.Name}
+|	/cast "${${AtkSpell}.Name}"
+|	/target ${Tank}
+|}
+
 /return
 
 
 
 Sub OutCombat
-/echo not in combat
+/echo Tank not in combat
 
-/if (${Me.PctMana} < 30) {
-	/sit
-	/while (${Me.PctMana} < 40) {
+/if (${Me.PctMana} < 50) {
+	/while (${Me.PctMana} < 100) {
+		/if (${Me.CombatState.Equal[COMBAT]} || ${Target.PctHPs} < 100) {
+			/stand
+			/break
+		}
+		/if (!${Me.Sitting}) {
+			/sit
+		}
 		/echo Sitting for mana...
 		/delay 30
 	}
 	/sit
 }
 
-/echo Spell - ${Target.Buff[${BuffSpell}].Name}
-/if (${Target.Buff[${BuffSpell}].ID}) {
-	/echo Has Buff
-} else {
-	/cast ${BuffSpell}
-}
+/call CastBuff ${BuffSpell_1}
+/call CastBuff ${BuffSpell_2}
+
 /return
 
 
-
 Sub NotAHealer
-
 /echo "Class is NOT a healer. Exiting..."
-
 /endmacro
 
 
-
-Sub CheckForBuff
-
-
-
+Sub CastBuff(BuffSpell)
+/declare BuffStatus local ${Target.Buff[${${BuffSpell}.Name}].ID}
+/if (${BuffStatus}) {
+	/echo Already has Buff : ${${BuffSpell}.Name}
+} else {
+	/echo Buffing with : ${${BuffSpell}.Name}
+	/cast "${${BuffSpell}.Name}"
+	/delay ${Math.Calc[${${BuffSpell}.CastTime.Raw}/100]}
+}
 /return
 
 
@@ -102,14 +130,13 @@ Sub FindTank
 /echo I have ${Group} members
 
 /declare j int outer
-/declare member string outer
 /declare cls string outer
 /for j 0 to ${Group} {
 	/echo ${j}
 	/varset cls ${Group.Member[${j}].Class.ShortName}
 	/if (${cls.Equal[WAR]} || ${cls.Equal[PAL]} || ${cls.Equal[SHD]}) {
 		/echo ${Group.Member[${j}].Name} is a tank
-		/varset member ${Group.Member[${j}].Name}
+		/varset Tank ${Group.Member[${j}].Name}
 	}
 	|else {
 	|	/echo ${Group.Member[${j}].Name} is not a tank
@@ -117,6 +144,6 @@ Sub FindTank
 }
 /next j
 
-/echo Chosen tank is ${member}
+/echo Chosen tank is ${Tank}
 
 /return
