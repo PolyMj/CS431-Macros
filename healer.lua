@@ -109,6 +109,10 @@ local function outCombat()
 	printf("Out of combat")
 end
 
+local function nav()
+	-- Placeholder
+end
+
 
 
 findTank()
@@ -121,6 +125,6 @@ while runscript do
 		outCombat()
 	end
 
-	-- This is probably a good place to do any movemen/nav commands
+	nav()
 	mq.delay(1500)
 end
