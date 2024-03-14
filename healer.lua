@@ -26,6 +26,7 @@ printf("Buff spell 1: %s", buff_spell_1.Name())
 printf("Buff spell 2: %s", buff_spell_2.Name())
 printf("Attack spell: %s", attack_spell.Name())
 
+
 local function target(targ)
 	if targ then
 		mq.cmdf("/target \"%s\"", targ.Name())
@@ -84,9 +85,7 @@ local function castSpell(spell, target)
 	end
 end
 
-
-local function inCombat()
-	printf("In comabt")
+local function healAll()
 	-- Heal tank
 	if (mq.TLO.Target.PctHPs() < TANK_HEAL_TH) then
 		castSpell(heal_spell, tank)
@@ -97,34 +96,72 @@ local function inCombat()
 		castSpell(heal_spell, mq.TLO.Me())
 	end
 
-	-- Buff tank
+end
 
-	-- Debuff target
+local function buffTank()
+	print("  BUFFS")
+end
 
-	-- Attack target (maybe)
+local function debuffEnemies()
+	print("  DEBUFFS")
+end
+
+local function attackEnemies()
+	print("  ATTACK")
 end
 
 
-local function outCombat()
+local function inCombatOps()
+	print("In combat")
+	healAll()
+
+	buffTank()
+
+	debuffEnemies()
+
+	attackEnemies()
+end
+
+
+local function outCombatOps()
 	printf("Out of combat")
 end
 
+
 local function nav()
-	-- Placeholder
+	print("NAVIGATE")
 end
 
+
+local function isInCombat()
+	if mq.TLO.Me.TargetOfTarget.Name() then
+		return true
+	else
+		return false
+	end
+end
 
 
 findTank()
 
 while runscript do
 	target(tank)
-	if (mq.TLO.Me.TargetOfTarget.Name()) then
-		inCombat()
+	if (isInCombat()) then
+		inCombatOps()
 	else
-		outCombat()
+		outCombatOps()
 	end
 
 	nav()
 	mq.delay(1500)
 end
+
+-- Redo combat check (R)
+-- Heal entire group (M)
+-- Target nearby enemies (enemies in combat) (M)
+	-- Debuff enemies
+	-- MQ Searching
+		-- next
+		-- npc
+		-- xtarhater
+-- Navigation (R)
