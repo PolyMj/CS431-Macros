@@ -9,10 +9,12 @@ else
 end
 
 local tank = nil
+local me_spawn = mq.TLO.Spawn(mq.TLO.Me.ID())
 
 local TANK_HEAL_TH = 80
 local SELF_HEAL_TH = 90
-local ATK_MANA_TH = 50
+local ATK_MANA_TH = 60
+local DEBUFF_MANA_TH = 40
 
 
 -- Get spells
@@ -33,9 +35,11 @@ local SPELL_NOT_READY = mq.TLO.Cast.Ready("NOT A SPELL")
 local function target(targ)
 	if targ then
 		mq.cmdf("/target \"%s\"", targ.Name())
+		return true
 	else
-		print("Untargeting")
+		print("Nil target, untargeting")
 		mq.cmd("/target")
+		return false
 	end
 end
 
@@ -68,27 +72,40 @@ local function findTank()
 	end
 end
 
-
-local function hasEffect(spell, target)
-	return mq.TLO.Cast.Ready(spell.Name()) == SPELL_NOT_READY
+local function hasBuff(spell, targ)
+	local val = targ.Buff(spell.Name()).ID()
+	return val
 end
 
 
--- Might be a way to check if a spell is ready to cast and wait until it is
-local function castSpell(spell, target)
-	printf("Casting %s on %s:", spell.Name(), target.Name())
+local function spellReady(spell)
+	return not (mq.TLO.Cast.Ready(spell.Name()) == SPELL_NOT_READY)
+end
+
+
+-- Cast a spell on a target, checks mana, buffstatus of target, and if cast is ready
+local function castSpell(spell, targ)
+	if not spell then
+		printf("Nil spell recieved")
+		return
+	elseif not targ then
+		printf("Nil target recieved")
+		return
+	end
+
+	printf("Casting %s on %s:", spell.Name(), targ.Name())
 	-- Check if has buff
-	if (target.Buff(spell.Name()).ID()) then
+	if hasBuff(spell, targ) then
 		printf(" - Already has buff %s", spell.Name())
 	else
 		-- Check if spell is on cooldown
-		if (hasEffect(target, spell)) then
+		if not spellReady(spell) then
 			print(" - Spell not ready")
 		-- Check if enough mana
 		elseif (spell.Mana() > mq.TLO.Me.CurrentMana() + 2) then
 			printf(" - Insufficient mana (%d / %d)", mq.TLO.Me.CurrentMana(), spell.Mana())
-		-- Cast
-		else
+		-- Target and cast
+		elseif target(targ) then
 			mq.cmdf("/cast \"%s\"", spell.Name())
 		end
 	end
@@ -130,8 +147,10 @@ local function iterateXTargets()
 	)
 
 	for index, hostile in ipairs(hostiles) do
-		printf("Index=%d ||Dist = %d ||  %s", index, distance(hostile, tank), hostile.Name())
-		castSpell(debuff_spell, hostile)
+		printf(" - Dist = %d ||  %s", index, distance(hostile, tank), hostile.Name())
+		if mq.TLO.Me.PctMana() > DEBUFF_MANA_TH then
+			castSpell(debuff_spell, hostile)
+		end
 		mq.delay(10)
 	end
 
@@ -140,13 +159,13 @@ end
 
 local function healAll()
 	-- Heal tank
-	if (mq.TLO.Target.PctHPs() < TANK_HEAL_TH) then
+	if (tank and tank.PctHPs() < TANK_HEAL_TH) then
 		castSpell(heal_spell, tank)
 	end
 
 	-- Heal self
 	if (mq.TLO.Me.PctHPs() < SELF_HEAL_TH) then
-		castSpell(heal_spell, mq.TLO.Me())
+		castSpell(heal_spell, me_spawn)
 	end
 
 end
@@ -176,7 +195,7 @@ local function isInCombat()
 	if mq.TLO.Me.TargetOfTarget.Name() then
 		return true
 	else
-		return false
+		return true --false
 	end
 end
 
@@ -185,13 +204,12 @@ end
 findTank()
 
 while runscript do
-	-- target(tank)
-	-- if (isInCombat()) then
-	-- 	inCombatOps()
-	-- else
-	-- 	outCombatOps()
-	-- end
-	iterateXTargets()
+	target(tank)
+	if (isInCombat()) then
+		inCombatOps()
+	else
+		outCombatOps()
+	end
 
 	-- nav()
 	mq.delay(1500)
