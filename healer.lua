@@ -13,6 +13,8 @@ local me_spawn = mq.TLO.Spawn(mq.TLO.Me.ID())
 
 local TANK_HEAL_TH = 80
 local SELF_HEAL_TH = 90
+local OTHER_HEAL_TH = 50
+
 local ATK_MANA_TH = 60
 local DEBUFF_MANA_TH = 40
 
@@ -167,12 +169,24 @@ local function healAll()
 	if (mq.TLO.Me.PctHPs() < SELF_HEAL_TH) then
 		castSpell(heal_spell, me_spawn)
 	end
-
+	
+	-- Iterate through group members, checking their classes
+	for i = 0, mq.TLO.Group() do
+		local member = mq.TLO.Group.Member(i)
+		if not (member.Name() == me_spawn.Name()
+				or member.Name() == tank.Name()) then
+			-- For all members that are not the tank or yourself
+			if member.PctHPs() < OTHER_HEAL_TH then
+				castSpell(heal_spell, member)
+			end
+		end
+	end
 end
 
 
 local function inCombatOps()
 	print("In combat")
+	
 	healAll()
 
 	iterateXTargets()
@@ -202,6 +216,7 @@ end
 --- MAIN CODE ---
 
 findTank()
+if not tank then runscript = false end
 
 while runscript do
 	target(tank)

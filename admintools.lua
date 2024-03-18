@@ -1,10 +1,16 @@
 local mq = require('mq')
 local runscript = true
 
+if not table.unpack then table.unpack = unpack end
+
 local sets = {}
 
-sets["Defiant"] = { 50532, 50033, 50034, 50035, 50036, 50037, 50038, 50039 }
-
+sets["DefiantArmor"] = { 50033, 50034, 50035, 50036, 50037, 50038, 50039 }
+sets["DeffiantRobes"] = { 50060, 50059, 50552, 50057, 50056, 50055, 50058, 50054}
+sets["DefWAR"] = { 50532, table.unpack(sets["DefiantArmor"])}
+sets["DefCLR"] = { 50541, table.unpack(sets["DefiantArmor"])}
+sets["DefNEC"] = { 50541, table.unpack(sets["DeffiantRobes"])}
+sets["FND"] = { 76346, 56749 }
 -- END OF SETS
 
 local function target(target_name)
@@ -36,12 +42,14 @@ local function levelScibe(level, targ_name)
 	end
 end
 
-local function getItemSet(set_name, targ_name)
+local function getItemSet(set_name, cnt, targ_name)
 	if target(targ_name) then
 		local set = sets[set_name]
 		if set then
-			for i, ID in ipairs(set) do
-				mq.cmdf("/say #gi %d", ID)
+			for i=1, cnt do
+				for i, ID in ipairs(set) do
+					mq.cmdf("/say #gi %d", ID)
+				end
 			end
 		else
 			printf("Invalid set name: %s", set_name)
