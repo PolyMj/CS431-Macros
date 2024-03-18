@@ -20,11 +20,14 @@ local heal_spell = mq.TLO.Me.Gem(1)
 local buff_spell_1 = mq.TLO.Me.Gem(2)
 local buff_spell_2 = mq.TLO.Me.Gem(3)
 local attack_spell = mq.TLO.Me.Gem(4)
+local debuff_spell = mq.TLO.Me.Gem(5)
 
 printf("Healing spell: %s", heal_spell.Name())
 printf("Buff spell 1: %s", buff_spell_1.Name())
 printf("Buff spell 2: %s", buff_spell_2.Name())
 printf("Attack spell: %s", attack_spell.Name())
+
+local SPELL_NOT_READY = mq.TLO.Cast.Ready("NOT A SPELL")
 
 
 local function target(targ)
@@ -66,24 +69,74 @@ local function findTank()
 end
 
 
+local function hasEffect(spell, target)
+	return mq.TLO.Cast.Ready(spell.Name()) == SPELL_NOT_READY
+end
+
+
 -- Might be a way to check if a spell is ready to cast and wait until it is
 local function castSpell(spell, target)
+	printf("Casting %s on %s:", spell.Name(), target.Name())
 	-- Check if has buff
 	if (target.Buff(spell.Name()).ID()) then
-		printf("  Has buff %s", spell.Name())
+		printf(" - Already has buff %s", spell.Name())
 	else
-		printf("  Missing buff %s", spell.Name())
-		-- Check mana and cooldown
-		if (not mq.TLO.Cast.Ready()) then
-			print("  Spell not ready")
+		-- Check if spell is on cooldown
+		if (hasEffect(target, spell)) then
+			print(" - Spell not ready")
+		-- Check if enough mana
 		elseif (spell.Mana() > mq.TLO.Me.CurrentMana() + 2) then
-			printf("  Insufficient mana (%d / %d)", mq.TLO.Me.CurrentMana(), spell.Mana())
+			printf(" - Insufficient mana (%d / %d)", mq.TLO.Me.CurrentMana(), spell.Mana())
 		-- Cast
 		else
 			mq.cmdf("/cast \"%s\"", spell.Name())
 		end
 	end
 end
+
+local function distance(from, to)
+	local dx = from.X() - to.X()
+	local dy = from.X() - to.X()
+	return math.sqrt(dx*dx + dy*dy)
+end
+
+
+local function iterateXTargets()
+	local cnt = mq.TLO.Me.XTarget()
+	if cnt < 1 then
+		print("No hostiles")
+		return
+	end
+
+	local hostiles = {}
+	printf("%d Hostiles:", cnt)
+	for i=1, cnt do
+		local targ = mq.TLO.Spawn(mq.TLO.Me.XTarget(i).ID())
+		-- If the target is a valid target
+		if targ.Name() then
+			local dist = distance(tank, targ)
+			hostiles[i] = targ
+		else
+			-- Invalid target found, uh oh
+			print(i)
+		end
+	end
+
+	-- Sort hostiles by distance
+	table.sort(hostiles, 
+		function(a, b) 
+			return distance(a, tank) < distance(b, tank)
+		end
+	)
+
+	for index, hostile in ipairs(hostiles) do
+		printf("Index=%d ||Dist = %d ||  %s", index, distance(hostile, tank), hostile.Name())
+		castSpell(debuff_spell, hostile)
+		mq.delay(10)
+	end
+
+end
+
 
 local function healAll()
 	-- Heal tank
@@ -98,33 +151,19 @@ local function healAll()
 
 end
 
-local function buffTank()
-	print("  BUFFS")
-end
-
-local function debuffEnemies()
-	print("  DEBUFFS")
-end
-
-local function attackEnemies()
-	print("  ATTACK")
-end
-
 
 local function inCombatOps()
 	print("In combat")
 	healAll()
 
-	buffTank()
-
-	debuffEnemies()
-
-	attackEnemies()
+	iterateXTargets()
 end
 
 
 local function outCombatOps()
 	printf("Out of combat")
+	castSpell(buff_spell_1, tank)
+	castSpell(buff_spell_2, tank)
 end
 
 
@@ -141,18 +180,20 @@ local function isInCombat()
 	end
 end
 
+--- MAIN CODE ---
 
 findTank()
 
 while runscript do
-	target(tank)
-	if (isInCombat()) then
-		inCombatOps()
-	else
-		outCombatOps()
-	end
+	-- target(tank)
+	-- if (isInCombat()) then
+	-- 	inCombatOps()
+	-- else
+	-- 	outCombatOps()
+	-- end
+	iterateXTargets()
 
-	nav()
+	-- nav()
 	mq.delay(1500)
 end
 
