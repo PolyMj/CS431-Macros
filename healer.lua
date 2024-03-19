@@ -15,8 +15,8 @@ local TANK_HEAL_TH = 80
 local SELF_HEAL_TH = 90
 local OTHER_HEAL_TH = 50
 
-local ATK_MANA_TH = 60
-local DEBUFF_MANA_TH = 40
+local ATK_MANA_TH = 80
+local DEBUFF_MANA_TH = 50
 
 
 -- Get spells
@@ -30,8 +30,9 @@ printf("Healing spell: %s", heal_spell.Name())
 printf("Buff spell 1: %s", buff_spell_1.Name())
 printf("Buff spell 2: %s", buff_spell_2.Name())
 printf("Attack spell: %s", attack_spell.Name())
+printf("Debuff spell: %s", debuff_spell.Name())
 
-local SPELL_NOT_READY = mq.TLO.Cast.Ready("NOT A SPELL")
+local MQ_FALSE = mq.TLO.Cast.Ready("NOT A SPELL")
 
 
 local function target(targ)
@@ -81,7 +82,7 @@ end
 
 
 local function spellReady(spell)
-	return not (mq.TLO.Cast.Ready(spell.Name()) == SPELL_NOT_READY)
+	return not (mq.TLO.Cast.Ready(spell.Name()) == MQ_FALSE)
 end
 
 
@@ -109,6 +110,20 @@ local function castSpell(spell, targ)
 		-- Target and cast
 		elseif target(targ) then
 			mq.cmdf("/cast \"%s\"", spell.Name())
+			-- If successful, delay until spell has finished casting
+			local result = mq.TLO.Cast.Result()
+			if result == "CAST_SUCCESS" then
+				mq.delay(spell.MyCastTime.Raw())
+				printf(" - Finished cast")
+			-- If fizzled, delay and retry
+			elseif result == "CAST_FIZZLE" then
+				printf(" - Fizzled, retrying...")
+				mq.delay(spell.FizzleTime.Raw())
+				castSpell(spell, targ)
+			-- Otherwise, it's some weird result that probably doesn't matter idk
+			else
+				printf(" - Unexpected result: %s", result)
+			end
 		end
 	end
 end
@@ -149,11 +164,14 @@ local function iterateXTargets()
 	)
 
 	for index, hostile in ipairs(hostiles) do
-		printf(" - Dist = %d ||  %s", index, distance(hostile, tank), hostile.Name())
+		printf(" - Dist = %f ||  %s", distance(hostile, tank), hostile.Name())
+		-- Cast debuff
 		if mq.TLO.Me.PctMana() > DEBUFF_MANA_TH then
 			castSpell(debuff_spell, hostile)
 		end
-		mq.delay(10)
+		if mq.TLO.Me.PctMana() > ATK_MANA_TH then
+			castSpell(attack_spell, hostile)
+		end
 	end
 
 end
@@ -193,24 +211,37 @@ local function inCombatOps()
 end
 
 
+local function isInCombat()
+	-- if mq.TLO.Me.TargetOfTarget.Name() then
+	-- 	return false
+	-- else
+	-- 	return false --false
+	-- end
+	return mq.TLO.Me.XTarget() > 0
+end
+
+
+local function regenMana()
+	while (mq.TLO.Me.PctMana() < 99) and not isInCombat() do
+		if not mq.TLO.Me.Sitting() then mq.cmd("/sit") end
+		printf("Sitting for mana (%d / %d)", mq.TLO.Me.CurrentMana(), mq.TLO.Me.MaxMana())
+		mq.delay(1800)
+	end
+	mq.cmd("/stand")
+end
+
 local function outCombatOps()
 	printf("Out of combat")
 	castSpell(buff_spell_1, tank)
 	castSpell(buff_spell_2, tank)
+	if mq.TLO.Me.PctMana() < 95 then
+		regenMana()
+	end
 end
 
 
 local function nav()
 	print("NAVIGATE")
-end
-
-
-local function isInCombat()
-	if mq.TLO.Me.TargetOfTarget.Name() then
-		return true
-	else
-		return true --false
-	end
 end
 
 --- MAIN CODE ---
@@ -219,6 +250,7 @@ findTank()
 if not tank then runscript = false end
 
 while runscript do
+	mq.cmd("/stand")
 	target(tank)
 	if (isInCombat()) then
 		inCombatOps()
