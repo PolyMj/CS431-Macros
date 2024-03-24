@@ -80,23 +80,23 @@ end
 
 
 -- Might be a way to check if a spell is ready to cast and wait until it is
-local function castSpell(spell, target)
-	-- Check if has buff
-	if (target.Buff(spell.Name()).ID()) then
-		printf("  Has buff %s", spell.Name())
-	else
-		printf("  Missing buff %s", spell.Name())
-		-- Check mana and cooldown
-		if (not mq.TLO.Cast.Ready()) then
-			print("  Spell not ready")
-		elseif (spell.Mana() > mq.TLO.Me.CurrentMana() + 2) then
-			printf("  Insufficient mana (%d / %d)", mq.TLO.Me.CurrentMana(), spell.Mana())
-		-- Cast
-		else
-			mq.cmdf("/cast \"%s\"", spell.Name())
-		end
-	end
-end
+-- local function castSpell(spell, target)
+-- 	-- Check if has buff
+-- 	if (target.Buff(spell.Name()).ID()) then
+-- 		printf("  Has buff %s", spell.Name())
+-- 	else
+-- 		printf("  Missing buff %s", spell.Name())
+-- 		-- Check mana and cooldown
+-- 		if (not mq.TLO.Cast.Ready()) then
+-- 			print("  Spell not ready")
+-- 		elseif (spell.Mana() > mq.TLO.Me.CurrentMana() + 2) then
+-- 			printf("  Insufficient mana (%d / %d)", mq.TLO.Me.CurrentMana(), spell.Mana())
+-- 		-- Cast
+-- 		else
+-- 			mq.cmdf("/cast \"%s\"", spell.Name())
+-- 		end
+-- 	end
+-- end
 
 local function healAll()
 	-- Heal tank
@@ -119,10 +119,29 @@ local function healAll()
 		castSpell(lesser_heal_spell, mq.TLO.Me())
 	end
 
+	target(tank)
 end
 
 local function buffTank()
 	local tankbuffs = {tank_buff1, tank_buff2}
+	target(tank)
+	-- for i, buff in ipairs(tankbuffs) do
+		if(mq.TLO.Target.Buff(tank_buff1).ID()) then
+			print("already has ", tank_buff1)
+		else
+			mq.cmdf('/cast "%s"', tank_buff1)
+			print("casting ", tank_buff1)
+		end
+
+		if(mq.TLO.Target.Buff(tank_buff2).ID()) then
+			print("already has ", tank_buff2)
+		else
+			mq.cmdf('/cast "%s"', tank_buff2)
+			print("casting ", tank_buff2)
+		end
+
+
+	-- end
 end
 
 local function debuffEnemies()
@@ -133,21 +152,31 @@ local function attackEnemies()
 	print("  ATTACK")
 end
 
+local function combatBuffs()
+	print("combat buffs")
+end
 
 local function inCombatOps()
 	print("In combat")
 	healAll()
 
-	buffTank()
+	combatBuffs()
 
 	debuffEnemies()
 
 	attackEnemies()
 end
 
+local function checkMana()
+	print("checking mana")
+end
 
 local function outCombatOps()
 	printf("Out of combat")
+
+	checkMana()
+
+	buffTank()
 end
 
 
