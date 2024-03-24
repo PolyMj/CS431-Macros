@@ -9,22 +9,34 @@ else
 end
 
 local tank = nil
+local dps = nil
 
-local TANK_HEAL_TH = 80
+local TANK_GREATER_HEAL_TH = 65
+local TANK_LESSER_HEAL_TH = 80
+
 local SELF_HEAL_TH = 90
 local ATK_MANA_TH = 50
 
 
--- Get spells
-local heal_spell = mq.TLO.Me.Gem(1)
-local buff_spell_1 = mq.TLO.Me.Gem(2)
-local buff_spell_2 = mq.TLO.Me.Gem(3)
-local attack_spell = mq.TLO.Me.Gem(4)
+-- Get cleric spells
+local greater_heal_spell = "Greater Healing"
+local lesser_heal_spell = "Healing"
+local heal_over_time_spell = "Celestial Remedy"
+local caster_buff = "Blessing of Piety"
+local debuff_spell = "Holy Might"
+local tank_buff1 = "Spirit Armor"
+local tank_buff2 = "Daring"
+local attack_spell = "Word of Shadow"
 
-printf("Healing spell: %s", heal_spell.Name())
-printf("Buff spell 1: %s", buff_spell_1.Name())
-printf("Buff spell 2: %s", buff_spell_2.Name())
-printf("Attack spell: %s", attack_spell.Name())
+-- local heal_spell = mq.TLO.Me.Gem(1)
+-- local buff_spell_1 = mq.TLO.Me.Gem(2)
+-- local buff_spell_2 = mq.TLO.Me.Gem(3)
+-- local attack_spell = mq.TLO.Me.Gem(4)
+
+-- printf("Healing spell: %s", heal_spell.Name())
+-- printf("Buff spell 1: %s", buff_spell_1.Name())
+-- printf("Buff spell 2: %s", buff_spell_2.Name())
+-- printf("Attack spell: %s", attack_spell.Name())
 
 
 local function target(targ)
@@ -36,7 +48,7 @@ local function target(targ)
 	end
 end
 
-local function findTank()
+local function findMembers()
 	-- Check prerequisites (is grouped)
 	if (not mq.TLO.Me.Grouped()) then
 		print("Not in a group")
@@ -51,8 +63,9 @@ local function findTank()
 		if class == "WAR" or class == "PAL" or class == "SHD" then
 			printf("  %s is a tank (%s)", member.Name(), class)
 			tank = member
-		else
-			printf("  %s is not a tank (%s)", member.Name(), class)
+		elseif class == "NEC" then
+			printf(" %s is a dps (%s)", member.Name(), class)
+			dps = member
 		end
 	end
 
@@ -87,13 +100,15 @@ end
 
 local function healAll()
 	-- Heal tank
-	if (mq.TLO.Target.PctHPs() < TANK_HEAL_TH) then
-		castSpell(heal_spell, tank)
+	if (mq.TLO.Target.PctHPs() < TANK_LESSER_HEAL_TH) then
+		castSpell(lesser_heal_spell, tank)
+	elseif (mq.TLO.Target.PctHPs() < TANK_LESSER_HEAL_TH) then
+		castSpell(greater_heal_spell, tank)
 	end
 
 	-- Heal self
 	if (mq.TLO.Me.PctHPs() < SELF_HEAL_TH) then
-		castSpell(heal_spell, mq.TLO.Me())
+		castSpell(lesser_heal_spell, mq.TLO.Me())
 	end
 
 end
@@ -142,7 +157,7 @@ local function isInCombat()
 end
 
 
-findTank()
+findMembers()
 
 while runscript do
 	target(tank)
