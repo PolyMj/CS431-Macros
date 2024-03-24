@@ -169,6 +169,22 @@ end
 
 local function checkMana()
 	print("checking mana")
+	local MANA_TH = 50
+	if(mq.TLO.Me.PctMana() < 50) then
+		print("low mana")
+		local tankstartingHPs = mq.TLO.Target.PctHPs()
+		while (mq.TLO.Me.PctMana() < 100) do
+			if(mq.TLO.Me.CombatState() == "COMBAT" or mq.TLO.Target.PctHPs() < tankstartingHPs) then
+				print("sitting interuppted")
+				mq.cmd('/stand')
+				break
+			end
+			if (not mq.TLO.Me.Sitting()) then
+				print("sitting")
+				mq.cmd('/sit')
+			end
+		end
+	end
 end
 
 local function outCombatOps()
@@ -204,7 +220,7 @@ while runscript do
 		outCombatOps()
 	end
 
-	nav()
+	-- nav()
 	mq.delay(1500)
 end
 
