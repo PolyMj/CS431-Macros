@@ -144,6 +144,24 @@ local function buffTank()
 	-- end
 end
 
+local function buffdps()
+	target(dps)
+	if(mq.TLO.Target.Buff(caster_buff).ID()) then
+		print("Dps has buff")
+	else
+		mq.cmdf('/cast "%s"', caster_buff)
+		print("casting ", caster_buff)
+	end
+
+	mq.cmd('/target clear')
+	if(mq.TLO.Me.Buff(caster_buff).ID()) then
+		print("I already have ", caster_buff)
+	else
+		mq.cmdf('/cast "%s"', caster_buff)
+		print("casting ", caster_buff)
+	end
+end
+
 local function debuffEnemies()
 	print("  DEBUFFS")
 end
@@ -193,6 +211,8 @@ local function outCombatOps()
 	checkMana()
 
 	buffTank()
+
+	buffdps()
 end
 
 
