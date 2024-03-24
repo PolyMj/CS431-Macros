@@ -100,6 +100,14 @@ end
 
 local function healAll()
 	-- Heal tank
+	target(tank)
+	if (mq.TLO.Target.PctHPs() < TANK_LESSER_HEAL_TH) then
+		castSpell(lesser_heal_spell, tank)
+	elseif (mq.TLO.Target.PctHPs() < TANK_LESSER_HEAL_TH) then
+		castSpell(greater_heal_spell, tank)
+	end
+
+	target(dps)
 	if (mq.TLO.Target.PctHPs() < TANK_LESSER_HEAL_TH) then
 		castSpell(lesser_heal_spell, tank)
 	elseif (mq.TLO.Target.PctHPs() < TANK_LESSER_HEAL_TH) then
@@ -114,7 +122,7 @@ local function healAll()
 end
 
 local function buffTank()
-	print("  BUFFS")
+	local tankbuffs = {tank_buff1, tank_buff2}
 end
 
 local function debuffEnemies()
@@ -149,7 +157,7 @@ end
 
 
 local function isInCombat()
-	if mq.TLO.Me.TargetOfTarget.Name() then
+	if mq.TLO.Me.TargetOfTarget.Name() or (mq.TLO.Me.CombatState == "COMBAT") then
 		return true
 	else
 		return false
