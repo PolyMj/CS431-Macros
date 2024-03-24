@@ -9,6 +9,7 @@ else
 end
 
 local tank = nil
+local dps = nil
 local me_spawn = mq.TLO.Spawn(mq.TLO.Me.ID())
 
 local TANK_HEAL_TH = 80
@@ -25,12 +26,17 @@ local buff_spell_1 = mq.TLO.Me.Gem(2)
 local buff_spell_2 = mq.TLO.Me.Gem(3)
 local attack_spell = mq.TLO.Me.Gem(4)
 local debuff_spell = mq.TLO.Me.Gem(5)
+local caster_buff_spell = mq.TLO.Me.Gem(6)
+local heal_over_time_spell = mq.TLO.Me.Gem(7)
 
 printf("Healing spell: %s", heal_spell.Name())
 printf("Buff spell 1: %s", buff_spell_1.Name())
 printf("Buff spell 2: %s", buff_spell_2.Name())
 printf("Attack spell: %s", attack_spell.Name())
 printf("Debuff spell: %s", debuff_spell.Name())
+printf("Caster buff spell: %s", caster_buff_spell.Name())
+printf("Heal over time spell: %s", heal_over_time_spell.Name())
+
 
 local MQ_FALSE = mq.TLO.Cast.Ready("NOT A SPELL")
 
@@ -62,6 +68,8 @@ local function findTank()
 		if class == "WAR" or class == "PAL" or class == "SHD" then
 			printf("  %s is a tank (%s)", member.Name(), class)
 			tank = member
+		elseif class == "NEC" then
+			dps = member
 		else
 			printf("  %s is not a tank (%s)", member.Name(), class)
 		end
@@ -78,6 +86,8 @@ end
 
 -- Checks if the target has the given buff (spell)
 local function hasBuff(spell, targ)
+	target(targ)
+	mq.delay(150)
 	local val = targ.Buff(spell.Name()).ID()
 	return val
 end
@@ -190,6 +200,8 @@ local function healAll()
 		castSpell(heal_spell, tank)
 	end
 
+	castSpell(heal_over_time_spell, tank)
+
 	-- Heal self
 	if (mq.TLO.Me.PctHPs() < SELF_HEAL_TH) then
 		castSpell(heal_spell, me_spawn)
@@ -217,14 +229,10 @@ local function inCombatOps()
 	iterateXTargets()
 end
 
--- Temporary combat check function
+
 local function isInCombat()
-	-- if mq.TLO.Me.TargetOfTarget.Name() then
-	-- 	return false
-	-- else
-	-- 	return false --false
-	-- end
-	return mq.TLO.Me.XTarget() > 0
+	local status = (mq.TLO.Me.XTarget() > 0) or (mq.TLO.Me.CombatState == "COMBAT")
+	return status
 end
 
 -- Regen the healer's mana
@@ -242,7 +250,9 @@ local function outCombatOps()
 	printf("Out of combat")
 	castSpell(buff_spell_1, tank)
 	castSpell(buff_spell_2, tank)
-	if mq.TLO.Me.PctMana() < 95 then
+	castSpell(caster_buff_spell, dps)
+	castSpell(caster_buff_spell, me_spawn)
+	if mq.TLO.Me.PctMana() < 65 then
 		regenMana()
 	end
 end
