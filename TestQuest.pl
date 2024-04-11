@@ -1,5 +1,8 @@
-# Stuff to do
-# Done
+# To upload file to server:
+	# scp [This file] eqemu@192.168.56.3:server/quests/[Zone]/[NPCName].pl
+# To download from server: switch [This file] and other parameter
+
+# Contents
 	# Recieving and checking money
 	# Giving money
 	# Removing money
