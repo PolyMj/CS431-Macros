@@ -32,6 +32,7 @@ sub buy_return {
 	}
 }
 
+my @buff_ids = (11, 18, 19, 20, 34, 66);
 my $test_buying = 0;
 
 sub EVENT_SAY {
@@ -65,6 +66,13 @@ sub EVENT_ITEM {
 	}
 	# elsif (...) {...}
 	else {
-		give_change($money);
+		quest::say("Thanks for the tip, here's something for your generosity");
+		
+		my $buff_index = int(rand(scalar @buff_ids));
+		quest::selfcast($buff_ids[$buff_index]);
+		
+		if ($money >= 1000) {
+			give_change($money - 1000);
+		}
 	}
 }
