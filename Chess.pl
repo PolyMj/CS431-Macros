@@ -263,6 +263,12 @@ sub piece_to_id {
 }
 
 sub initialize_chess {
+	for my $row (@chessboard) {
+		for my $square (@$row) {
+			$square = 0;
+		}
+	}
+	
 	for my $pawn_num (0..7) {
 		$chessboard[1][$pawn_num] = 17 + $pawn_num;
 		$chessboard[6][$pawn_num] = 1 + $pawn_num;
@@ -309,20 +315,22 @@ sub find_moves {
 	}
 
 	my $p_id = $chessboard[$row][$col];
+	my $is_plr = ($p_id < 17);
+	my $type = ($p_id - 1) % 16;
 	if ($p_id) {
-		if ($id < 8) {
+		if ($type < 8) {
 			move_pawn($p_id);
 		}
-		elsif ($id < 10) {
+		elsif ($type < 10) {
 			
 		}
-		elsif ($id < 12) {
+		elsif ($type < 12) {
 			
 		}
-		elsif ($id < 14) {
+		elsif ($type < 14) {
 			
 		}
-		elsif ($id < 15) {
+		elsif ($type < 15) {
 			
 		}
 		else {
