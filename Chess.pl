@@ -1,3 +1,5 @@
+# scp Chess.pl eqemu@192.168.56.3:server/quests/netherbian/TestQuest.pl
+
 my $is_playing_chess = 1;
 
 sub EVENT_SAY {
@@ -48,7 +50,7 @@ sub click {
 	my ($piece) = @_;
 	my $id = piece_to_id($piece);
 	if ($id == -1) {
-		# Not a piece, maybe it was a move?
+		parse_move($piece);
 		return;
 	}
 
@@ -58,6 +60,24 @@ sub click {
 
 	# TEMP
 	quest::say("Clicked: " . $prow . ", " . $pcol);
+}
+
+sub parse_move {
+	my ($movestr) = @_;
+	my $nrow = 8-int(substr($movestr, 0, 1));
+	my $ncol = ord(substr($movestr, 1, 2))-65;
+
+	quest::say("(" . $movestr . ") Move to " . $nrow . ", " . $ncol);
+
+	if ($nrow < 0 || $ncol < 0 || $nrow > 7 || $ncol > 7) {
+		return;
+	}
+
+	my ($row, $col) = @selected_piece;
+	$chessboard[$nrow][$ncol] = $chessboard[$row][$col];
+	$chessboard[$row][$col] = 0;
+
+	clear_moves();
 }
 
 
@@ -224,12 +244,15 @@ sub initialize_chess {
 	$chessboard[7][4] = 1+15;
 }
 
-
-sub find_moves {
-	my ($row, $col) = @selected_piece;
+sub clear_moves {
 	for my $i (0..8) {
 		$valid_moves[$i] = 0;
 	}
+}
+
+sub find_moves {
+	my ($row, $col) = @selected_piece;
+	clear_moves();
 	if ($selected_piece[0] < 0 || $selected_piece[1] < 0) {
 		return;
 	}
@@ -295,9 +318,14 @@ sub move_pawn {
 	}
 	
 	for $c (($col-1)..($col+1)) {
-		if (square_status($p_id, ($row+$dir), $c)) {
-			add_move($row+$dir, $c);
+		my $stat = square_status($p_id, ($row+$dir), $c);
+		if ($stat) {
+			if ($stat == -1) {
+				add_move($row+$dir, $c);
+			}
+			elsif ($c == $col) {
+				add_move($row+$dir, $c);
+			}
 		}
 	}
-	
 }
