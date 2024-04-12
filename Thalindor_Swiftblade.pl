@@ -37,8 +37,23 @@ my $test_buying = 0;
 
 sub EVENT_SAY {
 	if ($text=~/Hail/i) {
-		quest::say("Hello [Test_Buy] [Get Change]"); # Add to this as needed
+		quest::say("Hello [Test_Buy] [Get Change] [Teleport]"); # Add to this as needed
 	}
+	elsif ($text=~/Teleport/i) {
+		quest::say("I am still learning about teleportation, but I can send you to [" . quest::saylink("Pillars of Alra") . "], [" . quest::saylink("Icefall Glacier") . "],  or [" . quest::saylink("Cobalt Scar") . "]. Where would you like to go?")
+	}
+	elsif ($text =~ /Pillars of Alra/i) {
+        quest::say("Begone!");
+        $npc->CastSpell(29844, $userid);
+    }
+    elsif ($text =~ /Icefall Glacier/i) {
+        quest::say("Good luck!");
+        $npc->CastSpell(10874, $userid);
+    }
+    elsif ($text =~ /Cobalt Scar/i) {
+        quest::say("Cobalt Scar it is!");
+        $npc->CastSpell(2025, $userid);
+    }
 	elsif ($text=~/Leave/i) {
 		# Reset any variables about where the player is in the flowchart
 		$test_buying = 0;
