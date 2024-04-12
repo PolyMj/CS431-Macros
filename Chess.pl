@@ -1,15 +1,7 @@
-my $is_playing_chess = 0;
+my $is_playing_chess = 1;
 
 sub EVENT_SAY {
-	if ($is_playing_chess) {
-		chess($text);
-	}
-	
-	elsif ($text=~/Hail/i) {
-		quest::say("Hello [Test_Buy] [Get Change] [Chess] [Test]"); # Add to this as needed
-		$is_playing_chess = 1;
-		chess();
-	}
+	chess($text);
 };
 
 sub EVENT_ITEM {
@@ -23,6 +15,9 @@ sub EVENT_ITEM {
 my $npc_c = "";
 my $plr_c = "";
 my $emp_s = "__";
+
+my @selected_piece = (-1,-1);
+my @valid_moves = (0, 0, 0, 0, 0, 0, 0, 0);
 
 my @chessboard = (
 	[0, 0, 0, 0, 0, 0, 0, 0],
@@ -38,15 +33,62 @@ my @chessboard = (
 
 sub chess {
 	my ($text) = @_;
-	initialize_chess();
+
+	if ($text=~/Hail/i) {
+		initialize_chess();
+	}
+	else {
+		click($text);
+	}
+
 	display_chessboard();
 }
 
+sub click {
+	my ($piece) = @_;
+	my $id = piece_to_id($piece);
+	if ($id == -1) {
+		# Not a piece, maybe it was a move?
+		return;
+	}
+
+	my ($prow, $pcol) = find_piece($id);
+	@selected_piece = ($prow, $pcol);
+	find_moves();
+
+	# TEMP
+	quest::say("Clicked: " . $prow . ", " . $pcol);
+}
+
+
+sub find_piece {
+	my ($p_id) = @_;
+
+	for my $rowi (0..$#chessboard) {
+		for my $coli (0..$#{$chessboard[$rowi]}) {
+			if ($chessboard[$rowi][$coli] == $p_id) {
+				return ($rowi, $coli);
+			}
+		}
+	}
+
+	return (-1, -1);
+}
+
 sub display_chessboard {	
-	for my $row (@chessboard) {
-		my $row_str = "";
-		for my $square(@$row) {
-			$row_str = $row_str . id_to_fullstr($square) . ' ';
+	for my $rowi (0..$#chessboard) {
+		my $row_str = (8-$rowi) . ' : ';
+		my $vmove = $valid_moves[$rowi];
+		for my $coli (0..$#{$chessboard[$rowi]}) {
+			if ($vmove % 2) {
+				$row_str = $row_str . '[' . (8-$rowi) . chr($coli+65) . '] ';
+			}
+			else {
+				my $square = $chessboard[$rowi][$coli];
+				$row_str = $row_str . id_to_fullstr($square) . ' ';
+			}
+
+			$vmove = $vmove / 2;
 		}
 		quest::say($row_str);
 	}
@@ -67,7 +109,7 @@ sub display_chessboard {
 		# NPC => +17
 	# If not empty (nonzero), can decrement by 1, then % 16 to get piece type
 
-my $pawn = 'p', $bishop = 'b', $rook = 'p', $knight = 'n', $queen = 'Q-', $king = 'Kk';
+my $pawn = 'p', $bishop = 'b', $rook = 'u', $knight = 'n', $queen = 'Q-', $king = 'Kk';
 
 sub id_to_piece {
 	my ($id) = @_;
@@ -83,22 +125,22 @@ sub id_to_piece {
 		}
 
 		if ($id < 8) {
-			return $piece_str . $pawn . $id;
+			return $piece_str . $pawn . ($id+1);
 		}
 		elsif ($id < 10) {
-			return $piece_str . $bishop . ($id-8);
+			return $piece_str . $bishop . ($id-7);
 		}
 		elsif ($id < 12) {
-			return $piece_str . $rook . ($id-10);
+			return $piece_str . $rook . ($id-9);
 		}
 		elsif ($id < 14) {
-			return $piece_str . $knight . ($id-12);
+			return $piece_str . $knight . ($id-11);
 		}
 		elsif ($id < 15) {
-			return $piece_str . $king;
+			return $piece_str . $queen;
 		}
 		else {
-			return $piece_str . $queen;
+			return $piece_str . $king;
 		}
 	}
 	else {
@@ -118,6 +160,35 @@ sub id_to_fullstr {
 
 sub piece_to_id {
 	my ($piece) = @_;
+	if ($piece eq $emp_s) {
+		return 0;
+	}
+	
+	if (substr($piece, 0, 2) eq $queen) {
+		return 15;
+	}
+	elsif (substr($piece, 0, 2) eq $king) {
+		return 16;
+	}
+	else {
+		my $type = substr($piece, 0, 1);
+		my $num = int(substr($piece, 1, 2)) - 1;
+		if ($type eq $pawn) {
+			return 1 + $num
+		}
+		elsif ($type eq $bishop) {
+			return 9 + $num;
+		}
+		elsif ($type eq $rook) {
+			return 11 + $num;
+		}
+		elsif ($type eq $knight) {
+			return 13 + num;
+		}
+	}
+
+	quest::say("Error: Unknown piece");
+	return -1;
 }
 
 sub initialize_chess {
@@ -151,4 +222,82 @@ sub initialize_chess {
 	# King
 	$chessboard[0][4] = 17+15;
 	$chessboard[7][4] = 1+15;
+}
+
+
+sub find_moves {
+	my ($row, $col) = @selected_piece;
+	for my $i (0..8) {
+		$valid_moves[$i] = 0;
+	}
+	if ($selected_piece[0] < 0 || $selected_piece[1] < 0) {
+		return;
+	}
+
+	my $p_id = $chessboard[$row][$col];
+	if ($p_id) {
+		if ($id < 8) {
+			move_pawn($p_id);
+		}
+		elsif ($id < 10) {
+			
+		}
+		elsif ($id < 12) {
+			
+		}
+		elsif ($id < 14) {
+			
+		}
+		elsif ($id < 15) {
+			
+		}
+		else {
+			
+		}
+	}
+}
+
+# Assumes you checked square status
+sub add_move {
+	my ($row, $col) = @_;
+	if ($row < 0 || $row > 7 || $col < 0 || $col > 7) {
+		return 0;
+	}
+	else {
+		$valid_moves[$row] += 2 ** $col;
+	}
+}
+
+# Returns 1 if empty, 0 if friendly piece, -1 if enemy
+sub square_status {
+	my ($p_id, $row, $col) = @_;
+	my $square = $chessboard[$row][$col];
+	if ($square) {
+		if ($square > 16 == $p_id > 16) {
+			return 0;
+		}
+		else {
+			return -1;
+		}
+	}
+	else {
+		return 1;
+	}
+}
+
+sub move_pawn {
+	my ($p_id) = @_;
+	my ($row, $col) = @selected_piece;
+	my $dir = -1;
+	
+	if ($p_id > 16) {
+		$dir = 1;
+	}
+	
+	for $c (($col-1)..($col+1)) {
+		if (square_status($p_id, ($row+$dir), $c)) {
+			add_move($row+$dir, $c);
+		}
+	}
+	
 }
