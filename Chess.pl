@@ -18,7 +18,7 @@ my $npc_c = "";
 my $plr_c = "";
 my $emp_s = "__";
 
-my @selected_piece = (-1,-1);
+my $selected_piece = [-1,-1];
 my @valid_moves = (0, 0, 0, 0, 0, 0, 0, 0);
 
 my @chessboard = (
@@ -47,19 +47,17 @@ sub chess {
 }
 
 sub click {
-	my ($piece) = @_;
-	my $id = piece_to_id($piece);
+	my ($text) = @_;
+	my $id = piece_to_id($text);
 	if ($id == -1) {
-		parse_move($piece);
+		# Not a piece, maybe a move?
+		parse_move($text);
 		return;
 	}
 
 	my ($prow, $pcol) = find_piece($id);
-	@selected_piece = ($prow, $pcol);
+	$selected_piece = [$prow, $pcol];
 	find_moves();
-
-	# TEMP
-	quest::say("Clicked: " . $prow . ", " . $pcol);
 }
 
 sub parse_move {
@@ -67,17 +65,71 @@ sub parse_move {
 	my $nrow = 8-int(substr($movestr, 0, 1));
 	my $ncol = ord(substr($movestr, 1, 2))-65;
 
-	quest::say("(" . $movestr . ") Move to " . $nrow . ", " . $ncol);
+	move($nrow, $ncol);
 
+	npc_move();
+}
+
+sub move {
+	my ($nrow, $ncol) = @_;
 	if ($nrow < 0 || $ncol < 0 || $nrow > 7 || $ncol > 7) {
 		return;
 	}
 
-	my ($row, $col) = @selected_piece;
+	my ($row, $col) = @$selected_piece;
 	$chessboard[$nrow][$ncol] = $chessboard[$row][$col];
 	$chessboard[$row][$col] = 0;
-
+	$selected_piece = [-1, -1];
 	clear_moves();
+}
+
+sub npc_move {
+	my @pieces = ();
+	
+	# Get all pieces
+	for my $rowi (0..$#chessboard) {
+		for my $coli (0..$#{$chessboard[$rowi]}) {
+			if ($chessboard[$rowi][$coli] > 16) {
+				push(@pieces, [$rowi, $coli]);
+			}
+		}
+	}
+
+	while (scalar @pieces) {
+		# Select a random piece
+		$rindex = int(rand(scalar @pieces));
+		($selected_piece) = (splice(@pieces, $rindex, 1));
+		@selected_piece = @$selected_piece;
+		quest::say("NPC - " . $selected_piece->[0] . ", " . $selected_piece->[1]);
+		
+		
+		# Get all valid moves for this piece
+		find_moves();
+		my @valids = ();
+		for my $row (0..$#valid_moves) {
+			my $val = $valid_moves[$row];
+			for $col (0..7) {
+				if ($val % 2) {
+					push(@valids, [$row, $col]);
+				}
+				$val /= 2;
+			}
+		}
+
+
+		if (scalar @valids) {
+			# Random valid move
+			my ($move) = $valids[int(rand(scalar @valids))];
+			@move = @$move;
+			move($move->[0], $move->[1]);
+			return;
+		}
+
+	}
+	if (!(scalar @pieces)) {
+		quest::say("You win!");
+		# No moves, player wins
+	}
 }
 
 
@@ -126,7 +178,7 @@ sub display_chessboard {
 		# Queen => +15
 	# Teams
 		# Player => +0
-		# NPC => +17
+		# NPC => +16
 	# If not empty (nonzero), can decrement by 1, then % 16 to get piece type
 
 my $pawn = 'p', $bishop = 'b', $rook = 'u', $knight = 'n', $queen = 'Q-', $king = 'Kk';
@@ -207,7 +259,6 @@ sub piece_to_id {
 		}
 	}
 
-	quest::say("Error: Unknown piece");
 	return -1;
 }
 
@@ -251,9 +302,9 @@ sub clear_moves {
 }
 
 sub find_moves {
-	my ($row, $col) = @selected_piece;
+	my ($row, $col) = @$selected_piece;
 	clear_moves();
-	if ($selected_piece[0] < 0 || $selected_piece[1] < 0) {
+	if ($selected_piece->[0] < 0 || $selected_piece->[1] < 0) {
 		return;
 	}
 
@@ -278,6 +329,15 @@ sub find_moves {
 			
 		}
 	}
+}
+
+sub are_valid_moves {
+	for $i (0..7) {
+		if ($valid_moves[$i]) {
+			return 1;
+		}
+	}
+	return 0;
 }
 
 # Assumes you checked square status
@@ -310,7 +370,7 @@ sub square_status {
 
 sub move_pawn {
 	my ($p_id) = @_;
-	my ($row, $col) = @selected_piece;
+	my ($row, $col) = @$selected_piece;
 	my $dir = -1;
 	
 	if ($p_id > 16) {
