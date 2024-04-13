@@ -256,7 +256,7 @@ sub piece_to_id {
 			return 11 + $num;
 		}
 		elsif ($type eq $knight) {
-			return 13 + num;
+			return 13 + $num;
 		}
 	}
 
@@ -270,16 +270,16 @@ sub initialize_chess {
 		}
 	}
 	
-	# for my $pawn_num (0..7) {
-	# 	$chessboard[1][$pawn_num] = 17 + $pawn_num;
-	# 	$chessboard[6][$pawn_num] = 1 + $pawn_num;
-	# }
+	for my $pawn_num (0..7) {
+		$chessboard[1][$pawn_num] = 17 + $pawn_num;
+		$chessboard[6][$pawn_num] = 1 + $pawn_num;
+	}
 	
-	# # Bishops
-	# $chessboard[0][2] = 17+8;
-	# $chessboard[0][5] = 17+9;
-	# $chessboard[7][2] = 1+8;
-	# $chessboard[7][5] = 1+9;
+	# Bishops
+	$chessboard[0][2] = 17+8;
+	$chessboard[0][5] = 17+9;
+	$chessboard[7][2] = 1+8;
+	$chessboard[7][5] = 1+9;
 	
 	# Rooks
 	$chessboard[0][0] = 17+10;
@@ -287,19 +287,19 @@ sub initialize_chess {
 	$chessboard[7][0] = 1+10;
 	$chessboard[7][7] = 1+11;
 	
-	# # Knights
-	# $chessboard[0][1] = 17+12;
-	# $chessboard[0][6] = 17+13;
-	# $chessboard[7][1] = 1+12;
-	# $chessboard[7][6] = 1+13;
+	# Knights
+	$chessboard[0][1] = 17+12;
+	$chessboard[0][6] = 17+13;
+	$chessboard[7][1] = 1+12;
+	$chessboard[7][6] = 1+13;
 
-	# # Queen
-	# $chessboard[0][3] = 17+14;
-	# $chessboard[7][3] = 1+14;
+	# Queen
+	$chessboard[0][3] = 17+14;
+	$chessboard[7][3] = 1+14;
 
-	# # King
-	# $chessboard[0][4] = 17+15;
-	# $chessboard[7][4] = 1+15;
+	# King
+	$chessboard[0][4] = 17+15;
+	$chessboard[7][4] = 1+15;
 }
 
 sub clear_moves {
@@ -485,6 +485,28 @@ sub move_rook {
 sub move_knight {
 	my ($p_id) = @_;
 	my ($row, $col) = @$selected_piece;
+
+	for my $a (0..1) {
+		my ($x, $y) = (1, 2);
+		if ($a) {
+			($x, $y) = (2, 1);
+		}
+		for my $i (0..1) {
+			if ($i) {
+				$x = -$x;
+			}
+			for my $j (0..1) {
+				if ($j) {
+					$y = -$y;
+				}
+				my ($nrow, $ncol) = ($row+$x, $col+$y);
+				my $stat = square_status($p_id, $nrow, $ncol);
+				if ($stat) {
+					add_move($nrow, $ncol);
+				}
+			}
+		}
+	}
 }
 
 sub move_queen {
@@ -496,4 +518,15 @@ sub move_queen {
 sub move_king {
 	my ($p_id) = @_;
 	my ($row, $col) = @$selected_piece;
+
+	for $dx (-1..1) {
+		for $dy (-1..1) {
+			my ($nrow, $ncol) = ($row+$dy, $col+$dx);
+
+			my $stat = square_status($p_id, $nrow, $ncol);
+			if ($stat) {
+				add_move($nrow, $ncol);
+			}
+		}
+	}
 }
