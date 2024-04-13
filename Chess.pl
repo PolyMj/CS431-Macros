@@ -270,16 +270,16 @@ sub initialize_chess {
 		}
 	}
 	
-	for my $pawn_num (0..7) {
-		$chessboard[1][$pawn_num] = 17 + $pawn_num;
-		$chessboard[6][$pawn_num] = 1 + $pawn_num;
-	}
+	# for my $pawn_num (0..7) {
+	# 	$chessboard[1][$pawn_num] = 17 + $pawn_num;
+	# 	$chessboard[6][$pawn_num] = 1 + $pawn_num;
+	# }
 	
-	# Bishops
-	$chessboard[0][2] = 17+8;
-	$chessboard[0][5] = 17+9;
-	$chessboard[7][2] = 1+8;
-	$chessboard[7][5] = 1+9;
+	# # Bishops
+	# $chessboard[0][2] = 17+8;
+	# $chessboard[0][5] = 17+9;
+	# $chessboard[7][2] = 1+8;
+	# $chessboard[7][5] = 1+9;
 	
 	# Rooks
 	$chessboard[0][0] = 17+10;
@@ -287,19 +287,19 @@ sub initialize_chess {
 	$chessboard[7][0] = 1+10;
 	$chessboard[7][7] = 1+11;
 	
-	# Knights
-	$chessboard[0][1] = 17+12;
-	$chessboard[0][6] = 17+13;
-	$chessboard[7][1] = 1+12;
-	$chessboard[7][6] = 1+13;
+	# # Knights
+	# $chessboard[0][1] = 17+12;
+	# $chessboard[0][6] = 17+13;
+	# $chessboard[7][1] = 1+12;
+	# $chessboard[7][6] = 1+13;
 
-	# Queen
-	$chessboard[0][3] = 17+14;
-	$chessboard[7][3] = 1+14;
+	# # Queen
+	# $chessboard[0][3] = 17+14;
+	# $chessboard[7][3] = 1+14;
 
-	# King
-	$chessboard[0][4] = 17+15;
-	$chessboard[7][4] = 1+15;
+	# # King
+	# $chessboard[0][4] = 17+15;
+	# $chessboard[7][4] = 1+15;
 }
 
 sub clear_moves {
@@ -443,6 +443,43 @@ sub move_bishop {
 sub move_rook {
 	my ($p_id) = @_;
 	my ($row, $col) = @$selected_piece;
+
+	for my $i (1..7) {
+		my $nrow = $row - $i;
+		my $stat = square_status($p_id, $nrow, $col);
+		if ($stat) {
+			add_move($nrow, $col)
+		}
+		last if ($stat != 1);
+	}
+
+	for my $i (1..7) {
+		my $nrow = $row + $i;
+		my $stat = square_status($p_id, $nrow, $col);
+		if ($stat) {
+			add_move($nrow, $col)
+		}
+		last if ($stat != 1);
+	}
+
+	for my $i (1..7) {
+		my $ncol = $col - $i;
+		my $stat = square_status($p_id, $row, $ncol);
+		if ($stat) {
+			add_move($row, $ncol)
+		}
+		last if ($stat != 1);
+	}
+
+	for my $i (1..7) {
+		my $ncol = $col + $i;
+		my $stat = square_status($p_id, $row, $ncol);
+		if ($stat) {
+			add_move($row, $ncol)
+		}
+		last if ($stat != 1);
+	}
+	
 }
 
 sub move_knight {
