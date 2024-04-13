@@ -1,4 +1,4 @@
-# scp Thalindor_Swiftblade.pl eqemu@192.168.56.3:server/quests/netherbian/TestQuest.pl
+# scp Thalindor_Swiftblade.pl eqemu@192.168.56.3:server/quests/netherbian/Thalindor_Swiftblade.pl
 
 
 # Takes an amount of money in copper and gives it back to the player in the largest coin values
@@ -93,7 +93,7 @@ sub EVENT_SAY {
         $npc->CastSpell(2025, $userid);
     }
 	elsif ($text =~ /Summon Items/i) {
-		reset_conditions():
+		reset_conditions();
 		quest::say("I can summon an item for you, please give me one Diamond and then tell me the id of the item you would like");
 	}
 	elsif ($text=~/(\d{1,6})/i) {
@@ -112,17 +112,17 @@ sub EVENT_SAY {
 		reset_conditions();
 	}
 	elsif ($text=~/Make some money/i) {
-		reset_conditions():
+		reset_conditions();
 		quest::say("I'm pretty bad at chess. I'll bet you 250 platinum that I'll lose to you. Deal?");
 		$asking_about_chess = 1;
 	}
 	elsif ($text=~/Buy Levels/i) {
-		reset_conditions():
+		reset_conditions();
 		quest::say("Alright, I sell 'em for 7,600 platinum a pieces, so drop me some and I'll fix you up.");
 		$buying_levels = 1;
 	}
 	elsif ($text=~/Buy AA/i) {
-		reset_conditions():
+		reset_conditions();
 		if (quest::getlevel(0) >= 52) {
 			quest::say("Alright, I sell 'em for 12,400 platinum a piece, so drop me some and I'll fix you up.");
 			$buying_AA = 1;
