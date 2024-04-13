@@ -1,6 +1,3 @@
-# scp Thalindor_Swiftblade.pl eqemu@192.168.56.3:server/quests/netherbian/Thalindor_Swiftblade.pl
-
-
 # Takes an amount of money in copper and gives it back to the player in the largest coin values
 sub give_change {
 	my ($money) = @_;
@@ -31,7 +28,7 @@ sub buy_return {
 		return 1;
 	}
 }
-
+# Same as above but can but buys the maximum number of items
 sub buy_max_return {
 	my ($given, $cost) = @_;
 	# If not enough money was given
@@ -184,14 +181,14 @@ sub EVENT_ITEM {
 
 
 ### Literally just chess down here ###
-# empty=1, pawn=
-# +10 means white, +20 means black
 my $npc_c = "";
 my $plr_c = "";
 my $emp_s = "__";
 
-my $selected_piece = [-1,-1];
-my @valid_moves = (0, 0, 0, 0, 0, 0, 0, 0);
+my $selected_piece = [-1,-1]; # Position of selected peice
+# Each element is the valid moves of the row, with each bit of the 
+# number being a boolean of whether that square is a valid option
+my @valid_moves = (0, 0, 0, 0, 0, 0, 0, 0); 
 
 my @chessboard = (
 	[0, 0, 0, 0, 0, 0, 0, 0],
@@ -204,7 +201,24 @@ my @chessboard = (
 	[0, 0, 0, 0, 0, 0, 0, 0]
 );
 
+# Square Values:
+	# Default / Empty = 0
+	# Non-empty = 1
+	# Types:
+		# Pawn => +0~7
+		# Bishop => +8~9
+		# Rook => +10~11
+		# Knight => ~12~13
+		# Queen => +14
+		# King => +15
+	# Teams
+		# Player => +0
+		# NPC => +16
+	# If not empty (nonzero), can decrement by 1, then % 16 to get piece type
 
+my $pawn = 'p', $bishop = 'b', $rook = 'u', $knight = 'n', $queen = 'Q-', $king = 'Kk';
+
+# Run a round of chess
 sub chess {
 	my ($text) = @_;
 
@@ -220,9 +234,9 @@ sub chess {
 	}
 }
 
+# Checks if a player has won
 sub check_win {
 	my ($plr_king_alive, $npc_king_alive) = (0,0);
-
 
 	for my $rowi (0..$#chessboard) {
 		for my $coli (0..$#{$chessboard[$rowi]}) {
@@ -248,20 +262,23 @@ sub check_win {
 	return 1
 }
 
+# Check what the player has clicked
 sub click {
 	my ($text) = @_;
 	my $id = piece_to_id($text);
 	if ($id == -1) {
-		# Not a piece, maybe a move?
+		# Not a piece, so check if it's a move
 		parse_move($text);
 		return;
 	}
 
+	# If selected a piece, find the valid moves for that piece
 	my ($prow, $pcol) = find_piece($id);
 	$selected_piece = [$prow, $pcol];
 	find_moves();
 }
 
+# Convert a move instruction (e.g. A4) to an actual move
 sub parse_move {
 	my ($movestr) = @_;
 	my $nrow = 8-int(substr($movestr, 0, 1));
@@ -269,10 +286,11 @@ sub parse_move {
 
 	move($nrow, $ncol);
 
-	npc_move();
+	npc_move(); # Let the NPC have their turn
 	check_win();
 }
 
+# Move the selected piece to a new positon
 sub move {
 	my ($nrow, $ncol) = @_;
 	if ($nrow < 0 || $ncol < 0 || $nrow > 7 || $ncol > 7) {
@@ -286,6 +304,7 @@ sub move {
 	clear_moves();
 }
 
+# NPC's turn
 sub npc_move {
 	my @pieces = ();
 	
@@ -298,6 +317,7 @@ sub npc_move {
 		}
 	}
 
+	# While there are still pieces that haven't been checked
 	while (scalar @pieces) {
 		# Select a random piece
 		$rindex = int(rand(scalar @pieces));
@@ -319,7 +339,7 @@ sub npc_move {
 			}
 		}
 
-
+		# If there are valid moves for this piece
 		if (scalar @valids) {
 			# Random valid move
 			my ($move) = $valids[int(rand(scalar @valids))];
@@ -335,7 +355,7 @@ sub npc_move {
 	}
 }
 
-
+# Find a specific piece on the board
 sub find_piece {
 	my ($p_id) = @_;
 
@@ -350,6 +370,7 @@ sub find_piece {
 	return (-1, -1);
 }
 
+# Print out the entire chessboard
 sub display_chessboard {	
 	for my $rowi (0..$#chessboard) {
 		my $row_str = (8-$rowi) . ' : ';
@@ -370,23 +391,7 @@ sub display_chessboard {
 	}
 }
 
-# IDs:
-	# Default / Empty = 0
-	# Non-empty = 1
-	# Types:
-		# Pawn => +0~7
-		# Bishop => +8~9
-		# Rook => +10~11
-		# Knight => ~12~13
-		# Queen => +14
-		# King => +15
-	# Teams
-		# Player => +0
-		# NPC => +16
-	# If not empty (nonzero), can decrement by 1, then % 16 to get piece type
-
-my $pawn = 'p', $bishop = 'b', $rook = 'u', $knight = 'n', $queen = 'Q-', $king = 'Kk';
-
+# Convert from an id to a piece string
 sub id_to_piece {
 	my ($id) = @_;
 	if ($id) {
@@ -424,6 +429,7 @@ sub id_to_piece {
 	}
 }
 
+# Add brackets or lines depending on whether it's the player or NPC's piece
 sub id_to_fullstr {
 	my ($id) = @_;
 	if ($id > 0 && $id < 17) {
@@ -434,6 +440,7 @@ sub id_to_fullstr {
 	}
 }
 
+# Convert from a piece string to an ID
 sub piece_to_id {
 	my ($piece) = @_;
 	if ($piece eq $emp_s) {
@@ -466,13 +473,16 @@ sub piece_to_id {
 	return -1;
 }
 
+# Initialize all piece positions
 sub initialize_chess {
+	# Clear the board
 	for my $row (@chessboard) {
 		for my $square (@$row) {
 			$square = 0;
 		}
 	}
 	
+	# Pawns
 	for my $pawn_num (0..7) {
 		$chessboard[1][$pawn_num] = 17 + $pawn_num;
 		$chessboard[6][$pawn_num] = 1 + $pawn_num;
@@ -505,12 +515,14 @@ sub initialize_chess {
 	$chessboard[7][4] = 1+15;
 }
 
+# Clear @valid_moves
 sub clear_moves {
 	for my $i (0..8) {
 		$valid_moves[$i] = 0;
 	}
 }
 
+# Fill @valid_moves depending on the selected piece
 sub find_moves {
 	my ($row, $col) = @$selected_piece;
 	clear_moves();
@@ -543,6 +555,7 @@ sub find_moves {
 	}
 }
 
+# Checks if there are valid moves currently
 sub are_valid_moves {
 	for $i (0..7) {
 		if ($valid_moves[$i]) {
@@ -563,7 +576,8 @@ sub add_move {
 	}
 }
 
-# Returns 1 if empty, 0 if friendly piece, -1 if enemy
+# Returns 'true' if it's a valid spot, false otherwise
+# More specifically, returns 1 if empty, 0 if friendly piece, -1 if enemy
 sub square_status {
 	my ($p_id, $row, $col) = @_;
 	my $square = $chessboard[$row][$col];
