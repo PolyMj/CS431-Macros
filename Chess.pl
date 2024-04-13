@@ -162,6 +162,7 @@ sub display_chessboard {
 
 			$vmove = $vmove / 2;
 		}
+		last if $rowi >= 8;
 		quest::say($row_str);
 	}
 }
@@ -322,19 +323,19 @@ sub find_moves {
 			move_pawn($p_id);
 		}
 		elsif ($type < 10) {
-			
+			move_bishop($p_id);
 		}
 		elsif ($type < 12) {
-			
+			move_rook($p_id);
 		}
 		elsif ($type < 14) {
-			
+			move_knight($p_id);
 		}
 		elsif ($type < 15) {
-			
+			move_queen($p_id);
 		}
 		else {
-			
+			move_king($p_id);
 		}
 	}
 }
@@ -396,4 +397,66 @@ sub move_pawn {
 			}
 		}
 	}
+}
+
+sub move_bishop {
+	my ($p_id) = @_;
+	my ($row, $col) = @$selected_piece;
+
+	for my $i (1..7) {
+		my ($nrow, $ncol) = ($row-$i, $col-$i);
+		my $stat = square_status($p_id, $nrow, $ncol);
+		if ($stat) {
+			add_move($nrow, $ncol)
+		}
+		last if ($stat != 1);
+	}
+
+	for my $i (1..7) {
+		my ($nrow, $ncol) = ($row+$i, $col-$i);
+		my $stat = square_status($p_id, $nrow, $ncol);
+		if ($stat) {
+			add_move($nrow, $ncol)
+		}
+		last if ($stat != 1);
+	}
+
+	for my $i (1..7) {
+		my ($nrow, $ncol) = ($row+$i, $col+$i);
+		my $stat = square_status($p_id, $nrow, $ncol);
+		if ($stat) {
+			add_move($nrow, $ncol)
+		}
+		last if ($stat != 1);
+	}
+
+	for my $i (1..7) {
+		my ($nrow, $ncol) = ($row-$i, $col+$i);
+		my $stat = square_status($p_id, $nrow, $ncol);
+		if ($stat) {
+			add_move($nrow, $ncol)
+		}
+		last if ($stat != 1);
+	}
+}
+
+sub move_rook {
+	my ($p_id) = @_;
+	my ($row, $col) = @$selected_piece;
+}
+
+sub move_knight {
+	my ($p_id) = @_;
+	my ($row, $col) = @$selected_piece;
+}
+
+sub move_queen {
+	my ($p_id) = @_;
+	move_rook($p_id);
+	move_bishop($p_id);
+}
+
+sub move_king {
+	my ($p_id) = @_;
+	my ($row, $col) = @$selected_piece;
 }
