@@ -3,7 +3,10 @@
 my $is_playing_chess = 1;
 
 sub EVENT_SAY {
-	chess($text);
+	if ($is_playing_chess) {
+		chess($text);
+	}
+	
 };
 
 sub EVENT_ITEM {
@@ -46,6 +49,31 @@ sub chess {
 	display_chessboard();
 }
 
+sub check_win {
+	my ($plr_king_alive, $npc_king_alive) = (0,0);
+
+
+	for my $rowi (0..$#chessboard) {
+		for my $coli (0..$#{$chessboard[$rowi]}) {
+			if ($chessboard[$rowi][$coli] == 16) {
+				$plr_king_alive = 1;
+			}
+			if ($chessboard[$rowi][$coli] == 32) {
+				$npc_king_alive = 1;
+			}
+		}
+	}
+	if ($plr_king_alive && $npc_king_alive) {
+		return;
+	}
+	$is_playing_chess = 0;
+	if ($plr_king_alive) {
+		quest::say("You win!");
+		return;
+	}
+	quest::say("I won?");
+}
+
 sub click {
 	my ($text) = @_;
 	my $id = piece_to_id($text);
@@ -66,8 +94,10 @@ sub parse_move {
 	my $ncol = ord(substr($movestr, 1, 2))-65;
 
 	move($nrow, $ncol);
+	check_win();
 
 	npc_move();
+	check_win();
 }
 
 sub move {
@@ -175,8 +205,8 @@ sub display_chessboard {
 		# Bishop => +8~9
 		# Rook => +10~11
 		# Knight => ~12~13
-		# King => +14
-		# Queen => +15
+		# Queen => +14
+		# King => +15
 	# Teams
 		# Player => +0
 		# NPC => +16
