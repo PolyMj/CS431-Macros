@@ -52,16 +52,64 @@ function List:toString()
 end
 -- END OF LIST CLASS
 
--- MAIN CODE
+
 local myList = List.new();
+
+
+-- START OF PARSING STUFF --
+local stage = nil;
+
+-- Group of parsers and related attributes
+local parser_group = {}; -- NOTE: Need to define an empty set before the actual definition because scope and shit
+parser_group = {
+	-- Pointless function
+	yells = 0;
+	random = function(text)
+		if (text == "s") then
+			stage = parser_group.mockingbird;
+		elseif (parser_group.yells == 0) then
+			print("First time yelling at this wall for no reason, proud of you bub");
+			parser_group.yells = parser_group.yells + 1;
+		else
+			print("You've yelled here " .. parser_group.yells .. " times");
+			parser_group.yells = parser_group.yells + 1;
+		end
+	end;
+
+	-- Echos whatever text it recieves
+	mockingbird = function(text)
+		print(text);
+		if (text == "s") then
+			stage = parser_group.random;
+		end
+	end;
+};
+
+-- Used for texting Lua OOP
+function objTesting(text, a)
+	if (text == "p") then
+		print(myList:toString());
+	elseif (text == "s") then
+		stage = parser_group.mockingbird;
+	else
+		myList:addObj(Obj.new(text));
+	end
+end
+
+
+
+-- MAIN CODE
+stage = objTesting;
+
+-- Main loop
 while true do
-	io.write("LocalTest> ")
+	io.write("LocalTest > ")
 	local userInput = io.read()
 	if (userInput == "q") then break end;
 
-	if (userInput == "p") then
-		print(myList:toString());
+	if (stage) then
+		stage(userInput);
 	else
-		myList:addObj(Obj.new(userInput));
+		print("No parser function, not sure what to do here...");
 	end
 end
