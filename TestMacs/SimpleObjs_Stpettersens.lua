@@ -57,31 +57,46 @@ local myList = List.new();
 
 
 -- START OF PARSING STUFF --
+
+-- 	 Instead of storing a million condition variables to determine where the player's message
+-- needs to be sent to, we can have a single global varaible (stage) that holds a parser
+-- function that user input will always be sent to. 
+
+-- 	 E.g. stage starts off at a default 
+-- "what would you like to do" type of thing, then if the user wants to buy something, stage
+-- is updated to a function that will expect user input to enter what they want to buy, then
+-- to something that looks for how much they want to buy, and so on.
+
 local stage = nil;
 
 -- Group of parsers and related attributes
+-- Groups will make it much easier to look through code, epsecially since VSCode will allow you to collapse it
 local parser_group = {}; -- NOTE: Need to define an empty set before the actual definition because scope and shit
 parser_group = {
 	-- Pointless function
 	yells = 0;
 	random = function(text)
 		if (text == "s") then
-			stage = parser_group.mockingbird;
+			stage = objTesting;
+			io.write("Sent to objTesting, say 'p' to print the current list > ");
+			return;
 		elseif (parser_group.yells == 0) then
-			print("First time yelling at this wall for no reason, proud of you bub");
+			io.write("First time yelling at this wall for no reason, proud of you bub > ");
 			parser_group.yells = parser_group.yells + 1;
 		else
-			print("You've yelled here " .. parser_group.yells .. " times");
+			io.write("You've yelled here " .. parser_group.yells .. " times > ");
 			parser_group.yells = parser_group.yells + 1;
 		end
 	end;
 
 	-- Echos whatever text it recieves
 	mockingbird = function(text)
-		print(text);
 		if (text == "s") then
 			stage = parser_group.random;
+			io.write("Sent to parser_group.random > ");
+			return;
 		end
+		io.write(text .. " > ");
 	end;
 };
 
@@ -91,19 +106,23 @@ function objTesting(text, a)
 		print(myList:toString());
 	elseif (text == "s") then
 		stage = parser_group.mockingbird;
+		io.write("Sent to parser_group.mockingbird > ");
+		return;
 	else
 		myList:addObj(Obj.new(text));
 	end
+	io.write("Say 'p' to print the current list or anything else to add a new object > ");
 end
 
 
 
 -- MAIN CODE
 stage = objTesting;
+print("ALL: Use 's' to switch between parsers");
+io.write("Sent to objTesting, say 'p' to print the current list or anything else to add a new object > ");
 
 -- Main loop
 while true do
-	io.write("LocalTest > ")
 	local userInput = io.read()
 	if (userInput == "q") then break end;
 
@@ -111,5 +130,6 @@ while true do
 		stage(userInput);
 	else
 		print("No parser function, not sure what to do here...");
+		break;
 	end
 end
