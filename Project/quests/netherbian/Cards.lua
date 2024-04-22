@@ -5,12 +5,22 @@ math.randomseed(os.time())
 
 Card = {
 	-- Adds (index-1) * 4 to the id
-	RANKS = {"jo", "2", "3", "4", "5", "6", "7", "8", "9", "10", "Ja", "Q", "K", "A" };
+	RANKS = {"jo", "A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "Ja", "Q", "K"};
 	-- Adds (index-1) to the id
 	SUITES = {"S", "H", "D", "C"};
 	ID_MIN = 0;
 	ID_NJ_MIN = 4;
 	ID_MAX = 55;
+	
+	RANK_IDS = {
+		JOKER = 0;
+		JACK = 11;
+		QUEEN = 12;
+		KING = 13;
+		ACE = 1;
+		TWO = 2;
+		TEN = 10;
+	};
 };
 Card.__index = Card;
 
@@ -35,7 +45,32 @@ function Card:rankID() return math.floor(self.id / 4); end
 function Card:rankStr() return self.RANKS[self:rankID()+1] end;
 
 function Card:toString()
-	return self:rankStr() .. " of " .. self:suiteStr();
+	return "|" .. self:rankStr() .. " of " .. self:suiteStr() .. "|";
+end
+
+function Card:toStringFaceDown()
+	return "|%###%|";
+end
+
+function Card.faceDownCard()
+	return "|%###%|";
+end
+
+function Card:isAce()
+	return (self:rankID() == Card.RANK_IDS.ACE);
+end
+
+function Card:isFace()
+	local rank = self:rankID();
+	return (rank == Card.RANK_IDS.JACK or
+			rank == Card.RANK_IDS.QUEEN or
+			rank == Card.RANK_IDS.KING
+	);
+end
+
+function Card:isNumber()
+	local rank = self:rankID();
+	return (Card.RANK_IDS.TWO <= rank or rank <= Card.RANK_IDS.TEN);
 end
 
 	-- ### END CARD CLASS ### --
@@ -110,10 +145,10 @@ end
 
 -- Prints the entire deck (subject to change)
 function Deck:toString()
-	local string = "{";
+	local string = "{:";
 	
 	for i, c in pairs(self.cards) do
-		string = string .. " |" .. c:toString() .. "| ";
+		string = string .. " " .. c:toString() .. ":";
 	end
 	return string .. "}";
 end
