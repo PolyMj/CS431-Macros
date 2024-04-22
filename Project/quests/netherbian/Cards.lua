@@ -1,3 +1,5 @@
+math.randomseed(os.time())
+
 
 	-- ### BEGIN CARD CLASS ### --
 
@@ -68,7 +70,45 @@ function Deck.new(deck_count, use_joker)
 	return self;
 end
 
+-- Draws and returns a random card, removing it from the deck
+function Deck:drawRandom()
+	local index = math.random(1,#self.cards);
+	local card = self.cards[index];
+	table.remove(self.cards, index);
+	return card;
+end
 
+-- Inserts a card into a random location in the deck
+function Deck:insertRandom(card)
+	table.insert(self.cards, math.random(1,#self.cards+1), card);
+end
+
+-- Shuffles the deck (see drawRandom(), you may not need to shuffle)
+function Deck:shuffle(count)
+	local count = count or 3;
+	for i=1, count do
+		for c=1, #self.cards do
+			self:addTop(self:drawRandom()); -- Draws a random card and reinserts it
+		end
+		for c=1, #self.cards do
+			self:insertRandom(self:drawTop()) -- Draws the top card and randomly reinserts it
+		end
+	end
+end
+
+-- draws a card from the top of the deck
+function Deck:drawTop()
+	local card = self.cards[#self.cards];
+	table.remove(self.cards);
+	return card;
+end
+
+-- Add a card to the top of the deck
+function Deck:addTop(card)
+	table.insert(self.cards, card);
+end
+
+-- Prints the entire deck (subject to change)
 function Deck:toString()
 	local string = "{";
 	
