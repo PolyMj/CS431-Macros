@@ -51,6 +51,33 @@ function Deck:minValue()
 	return value;
 end
 
+function Deck:optimalValue()
+	local value = 0;
+	local ace_count = 0;
+	for i, c in ipairs(self.cards) do
+		value = value + c:value();
+		if (c:isAce()) then
+			ace_count = ace_count + 1;
+		end
+	end
+
+	while (value <= 11 and ace_count > 0) do
+		value = value + 10;
+		ace_count = ace_count - 1;
+	end
+	return value;
+end
+
+function Deck:isBlackjack()
+	if (self.cards[1]:isAce()) then
+		return (self.cards[2]:value() == 10);
+	elseif (self.cards[2]:isAce()) then
+		return (self.cards[1]:value() == 10);
+	else
+		return false;
+	end
+end
+
 
 local STAGE = nil;
 local deck = nil;
@@ -59,13 +86,46 @@ local current_handin = 0;
 local player = {
 	hand_1 = nil;
 	hand_2 = nil;
-	hand_1_bet = -1;
-	hand_2_bet = -1;
+	hand_1_bet = 0;
+	hand_2_bet = 0;
 	splitAcePair = false;
+
+	-- Use either 1 or 2 to get hand 1/2
+	handToString = function(self, hand_num)
+		local hand = self.hand_2;
+		local bet = self.hand_2_bet;
+		if not (hand_num and hand_num == 2) then
+			hand_num = 1;
+			hand = self.hand_1;
+			bet = self.hand_1_bet;
+		end
+
+		if (not hand) then return " - "; end
+
+		local str = "Player (hand " .. hand_num .. ") - ";
+		if (bet <= 0) then
+			str = str .. "Finished - " .. hand:toString();
+		else
+			str = str .. "Val=" .. hand:optimalValue() .. " " .. hand:toString() .. " | Bet = " .. bet .. "c";
+		end
+		return str;
+	end
 };
 
 local dealer = {
 	hand = nil;
+
+	handToString = function(self)
+		return (
+			"### Dealer - Val>=" .. self.hand.cards[1]:value() .. " : " .. 
+			self.hand.cards[1]:toString() .. Card.faceDownCard() .. 
+			" | Total bet = " .. (player.hand_1_bet + player.hand_2_bet) .. "c"
+		);
+
+
+		-- return "### Dealer - {: " .. self.hand.cards[1]:toString() .. 
+		-- 		" : " .. self.hand.cards[2]:toStringFaceDown() .. " :}";
+	end
 }
 
 -- Display all cards (display hidden cards as face down)
@@ -78,29 +138,16 @@ function displayGame()
 	end
 
 	-- Print dealers hand (1 visible 1 hidden)
-	local dealer_str = "Dealer - " .. dealer.hand.cards[1]:toString() .. " : " .. dealer.hand.cards[2]:toStringFaceDown();
+	local dealer_str = dealer:handToString();
 	
-	-- Print player's hand 1
-	local player_str_1 = "Player (hand 1) - ";
-	if (player.hand_1_bet > 0) then
-		for i, c in ipairs(player.hand_1.cards) do
-			player_str_1 = player_str_1 .."[1" .. i .. "]" .. c:toString() .. "  ";
-		end
-	else
-		player_str_1 = player_str_1 .. "Finished";
+	local player_str_1;
+	if (player.hand_1) then
+		player_str_1 = player:handToString(1);
 	end
 
-	-- Print player's hand 2 (if applicable)
-	local player_str_2 = nil;
+	local player_str_2;
 	if (player.hand_2) then
-		player_str_2 = "Player (hand 2) - ";
-		if (player.hand_2_bet > 0) then
-			for i, c in ipairs(player.hand_2.cards) do
-				player_str_2 = player_str_2 .."[2" .. i .. "]" .. c:toString() .. "  ";
-			end
-		else
-			player_str_2 = player_str_2 .. "Finished";
-		end
+		player_str_2 = player:handToString(2);
 	end
 
 	print(dealer_str);
@@ -142,24 +189,30 @@ end
 function endTurn()
 	-- Check if player lost or won (hand_1)
 	if (player.hand_1_bet > 0) then
-		if (player.hand_1:minValue() == 21) then
+		if (player.hand_1:optimalValue() == 21) then
 			-- Give player their bet for hand_1
-			win(1);
+			checkStand(1);
 		elseif (player.hand_1:minValue() > 21) then
-			lose(1);
+			bust(1);
 		end
 	end
 	-- Check if player lost or won (hand_1)
 	if (player.hand_2_bet > 0) then
-		if (player.hand_2:minValue() == 21) then
+		if (player.hand_2:optimalValue() == 21) then
 			-- Give player their bet for hand_2
-			win(2);
+			checkStand(2);
 		elseif (player.hand_2:minValue() > 21) then
-			lose(2);
+			bust(2);
 		end
 	end
 	
 	displayGame()
+
+	-- Check if both hand are finished
+	if (player.hand_1_bet == 0 and player.hand_2_bet == 0) then
+		finishGame();
+		return;
+	end
 
 	print();
 	turn();
@@ -197,33 +250,19 @@ function parseTurn(text)
 			io.write("Sorry, not sure what you want.\n");
 			turn();
 		end
-		return;
+		return; -- Make sure to return if calling a turn function like hit() or split()
 	else
 		turn();
 	end
 end
 
--- Player options:
-	-- Stand
-		-- You feel you're close enough with the cards you have.
-	-- Hit
-		-- Recieve another card
-		-- As many as you want until you stand
-	-- Splitting pairs
-		-- If your first two cards have the same numerical value, you may split them into two hands
-			-- Each hand will be like it's own game, but only with stand and hit
-			-- The bet on each must equal the original bet
-			-- If the pair is of aces, you are limited to one card draw on each hand
-	-- Doubling down
-		-- Double your bet and recieve exactly one more card
-	-- Insurance
-		-- If the dealer's face-up is an Ace, you may bet half of your original bet that the dealer has a blackjack
-	-- Surrender
-		-- Take the L but only give half your wager
--- 
-
 -- Draw another card for one of the player's hands
 function hit(text)
+	if (text and text == "Back") then
+		turn();
+		return;
+	end
+
 	local hand = tonumber(text or "0");
 	if (hand ~= 1 and hand ~= 2) then hand = 0; end -- Zero means ask again or default (hand 1)
 
@@ -234,7 +273,7 @@ function hit(text)
 		elseif (player.splitAcePair and #player.hand_2.cards > 2) then
 			hand = 1;
 		else
-			io.write("Select hand 1 or 2");
+			io.write("Select hand 1 or 2, or [Back]");
 			STAGE = hit;
 			return; -- End early to get the user's choice
 		end
@@ -250,9 +289,76 @@ function hit(text)
 end
 
 -- Player chooses to use the cards they have; check value of cards and compare to dealer
-function stand()
+function stand(text)
+	if (text and text == "Back") then
+		turn();
+		return;
+	end
 
+	local hand = tonumber(text or "0");
+	if (not player.hand_2) then
+		hand = 1;
+	elseif (hand ~= 1 and hand ~= 2) then 
+		hand = 0; -- Zero means ask again or default (hand 1)
+	end 
+
+	if (hand == 0) then
+		io.write("Select hand 1 or 2, or [Back]");
+		STAGE = stand;
+		return; -- End early to get the user's choice
+	end
+
+	checkStand(hand);
 	endTurn();
+end
+
+-- This function actually returns instead just jumping to endTurn()
+function checkStand(hand_num)
+	local plrhand;
+	if (hand_num == 1) then
+		hand = 1;
+		plrhand = player.hand_1;
+	else
+		hand = 2;
+		plrhand = player.hand_2;
+	end
+
+	if (not plrhand) then 
+		print(hand);
+		return; 
+	end
+	
+	-- Check win condition
+	local str = "Hand " .. hand .. " with value " .. plrhand:optimalValue();
+	if (plrhand:isBlackjack()) then
+		if (dealer.hand:isBlackjack()) then
+			str = str .. " tied with the dealer's blackjack!";
+			-- Return bet
+		else
+			str = str .. " beat the dealer with a blackjack!";
+			-- Triple the bet
+		end
+	elseif (plrhand:optimalValue() < dealer.hand:optimalValue()) then
+		str = str .. " lost to the dealer";
+		-- Keep bet
+	elseif (plrhand:optimalValue() == dealer.hand:optimalValue()) then
+		str = str .. " tied with the dealer";
+		-- Return bet
+	else
+		str = str .. " beat the dealer!";
+		-- Double the bet
+	end
+
+	-- Clear correct bet
+	if (hand == 1) then
+		player.hand_1_bet = 0;
+	else
+		player.hand_2_bet = 0;
+	end
+
+	io.write(str);
+
+	return;
 end
 
 -- Splits current hand into two
@@ -282,12 +388,6 @@ function split(text)
 	player.hand_2:addTop(player.hand_1:drawTop());
 	player.hand_2_bet = current_handin;
 	current_handin = 0;
-	print("Created hand 2");
-	if (player.hand_2) then
-		print("Hand 2 is valid");
-	else
-		print("Hand 2 is nil");
-	end
 
 	endTurn();
 end
@@ -310,10 +410,6 @@ function win(hand_num)
 		-- Return bet
 		player.hand_2_bet = 0;
 	end
-
-	if (player.hand_1_bet == 0 and player.hand_2_bet == 0) then
-		finishGame();
-	end
 end
 
 -- Lose for the given hand
@@ -332,9 +428,28 @@ function lose(hand_num)
 	else
 		player.hand_2_bet = 0;
 	end
+end
 
-	if (player.hand_1_bet == 0 and player.hand_2_bet == 0) then
-		finishGame();
+-- Check if a hand busts
+function bust(hand_num)
+	if (not hand_num) then
+		print("ERROR: Nil handnum recieved in bust()");
+		return
+	elseif (hand_num ~= 1 and hand_num ~= 2) then
+		print("ERROR: Invalid handnum recieved in bust()");
+		return;
+	end
+
+	if (hand_num == 1) then
+		if (player.hand_1:optimalValue() > 21) then
+			io.write("Hand 1 busted!");
+			player.hand_1_bet = 0;
+		end
+	else
+		if (player.hand_2:optimalValue() > 21) then
+			io.write("Hand 2 busted!");
+			player.hand_2_bet = 0;
+		end
 	end
 end
 
@@ -342,8 +457,8 @@ end
 function finishGame()
 	player.hand_1 = nil;
 	player.hand_2 = nil;
-	player.hand_1_bet = -1;
-	player.hand_2_bet = -1;
+	player.hand_1_bet = 0;
+	player.hand_2_bet = 0;
 	dealer.hand = nil;
 	deck = nil;
 	player.splitAcePair = false;
@@ -351,7 +466,7 @@ function finishGame()
 	-- Give any money left in current_handin
 	current_handin = 0;
 
-	initializeGame(); -- You can never excape B L A C K J A C K
+	getFirstBet(); -- You can never excape B L A C K J A C K
 end
 
 

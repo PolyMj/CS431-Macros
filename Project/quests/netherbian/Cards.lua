@@ -148,7 +148,7 @@ function Deck:toString()
 	local string = "{:";
 	
 	for i, c in pairs(self.cards) do
-		string = string .. " " .. c:toString() .. ":";
+		string = string .. " " .. c:toString() .. " :";
 	end
 	return string .. "}";
 end
