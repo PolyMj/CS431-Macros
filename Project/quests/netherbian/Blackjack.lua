@@ -121,10 +121,6 @@ local dealer = {
 			self.hand.cards[1]:toString() .. Card.faceDownCard() .. 
 			" | Total bet = " .. (player.hand_1_bet + player.hand_2_bet) .. "c"
 		);
-
-
-		-- return "### Dealer - {: " .. self.hand.cards[1]:toString() .. 
-		-- 		" : " .. self.hand.cards[2]:toStringFaceDown() .. " :}";
 	end
 }
 
@@ -173,7 +169,13 @@ function initializeGame()
 	endTurn(); -- Basically after turn 0 I guess idk
 end
 
+-- Get a bet before the game starts
 function getFirstBet(text)
+	if (text and text == "Back") then
+		-- Set stage to a different default
+		-- Return current_handin
+		return;
+	end
 	if (current_handin <= 0) then
 		io.write("\nPlace your bet (by handing me money), or [Exit]");
 		STAGE = getFirstBet;
@@ -187,22 +189,15 @@ end
 
 -- Checks game status after a turn and acts accordingly
 function endTurn()
-	-- Check if player lost or won (hand_1)
+	-- If a hand >= 21, force a stand for that hand
 	if (player.hand_1_bet > 0) then
-		if (player.hand_1:optimalValue() == 21) then
-			-- Give player their bet for hand_1
+		if (player.hand_1:optimalValue() >= 21) then
 			checkStand(1);
-		elseif (player.hand_1:minValue() > 21) then
-			bust(1);
 		end
 	end
-	-- Check if player lost or won (hand_1)
 	if (player.hand_2_bet > 0) then
-		if (player.hand_2:optimalValue() == 21) then
-			-- Give player their bet for hand_2
+		if (player.hand_2:optimalValue() >= 21) then
 			checkStand(2);
-		elseif (player.hand_2:minValue() > 21) then
-			bust(2);
 		end
 	end
 	
@@ -338,6 +333,9 @@ function checkStand(hand_num)
 			str = str .. " beat the dealer with a blackjack!";
 			-- Triple the bet
 		end
+	elseif (plrhand:optimalValue() > 21) then
+		str = str .. " busted!";
+		-- Keep bet
 	elseif (plrhand:optimalValue() < dealer.hand:optimalValue()) then
 		str = str .. " lost to the dealer";
 		-- Keep bet
@@ -356,7 +354,7 @@ function checkStand(hand_num)
 		player.hand_2_bet = 0;
 	end
 
-	io.write(str);
+	print(str);
 
 	return;
 end
@@ -392,69 +390,20 @@ function split(text)
 	endTurn();
 end
 
--- Win for the given hand
-function win(hand_num)
-	if (not hand_num) then
-		print("ERROR: Nil handnum recieved in win()");
-		return
-	elseif not (hand_num == 1 or hand_num == 2) then
-		print("ERROR: Invalid handnum recieved in win()");
-		return;
-	end
-
-	print("You won hand " .. hand_num .. "!");
-	if (hand_num == 1) then
-		-- Return bet
-		player.hand_1_bet = 0;
-	else
-		-- Return bet
-		player.hand_2_bet = 0;
-	end
-end
-
--- Lose for the given hand
-function lose(hand_num)
-	if (not hand_num) then
-		print("ERROR: Nil handnum recieved in lose()");
-		return
-	elseif not (hand_num == 1 or hand_num == 2) then
-		print("ERROR: Invalid handnum recieved in lose()");
-		return;
-	end
-
-	print("You lost hand " .. hand_num .. ".");
-	if (hand_num == 1) then
-		player.hand_1_bet = 0;
-	else
-		player.hand_2_bet = 0;
-	end
-end
-
--- Check if a hand busts
-function bust(hand_num)
-	if (not hand_num) then
-		print("ERROR: Nil handnum recieved in bust()");
-		return
-	elseif (hand_num ~= 1 and hand_num ~= 2) then
-		print("ERROR: Invalid handnum recieved in bust()");
-		return;
-	end
-
-	if (hand_num == 1) then
-		if (player.hand_1:optimalValue() > 21) then
-			io.write("Hand 1 busted!");
-			player.hand_1_bet = 0;
-		end
-	else
-		if (player.hand_2:optimalValue() > 21) then
-			io.write("Hand 2 busted!");
-			player.hand_2_bet = 0;
-		end
-	end
-end
-
--- Clear all game data
+	
+-- Print final game state and clear all game data
 function finishGame()
+	local dealer_str = "### Dealer - Val=" .. dealer.hand:optimalValue() .. " - " .. dealer:handToString();
+	local player_str_1;
+	local player_str_2;
+	if (player.hand_1) then
+		player_str_1 = "Player (hand 1) - Val=" .. player.hand_1:optimalValue() .. " - " .. player:handToString(1);
+	end
+	if (player.hand_2) then
+		player_str_2 = "Player (hand 2) - Val=" .. player.hand_2:optimalValue() .. " - " .. player:handToString(2);
+	end
+
+
 	player.hand_1 = nil;
 	player.hand_2 = nil;
 	player.hand_1_bet = 0;
