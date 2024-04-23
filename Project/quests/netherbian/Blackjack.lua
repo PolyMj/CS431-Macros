@@ -1,7 +1,7 @@
 -- This is what you'll need when you place Cards.lua in quests and this file in a zone
 package.path = package.path .. ";../?.lua";
 -- This is for this project
-package.path = package.path .. ";Project/quests/netherbian/?.lua"
+package.path = package.path .. ";Project/quests/?.lua"
 
 require("Cards")
 
@@ -189,6 +189,7 @@ end
 
 -- Checks game status after a turn and acts accordingly
 function endTurn()
+	
 	-- If a hand >= 21, force a stand for that hand
 	if (player.hand_1_bet > 0) then
 		if (player.hand_1:optimalValue() >= 21) then
@@ -200,14 +201,14 @@ function endTurn()
 			checkStand(2);
 		end
 	end
-	
-	displayGame()
 
 	-- Check if both hand are finished
 	if (player.hand_1_bet == 0 and player.hand_2_bet == 0) then
 		finishGame();
 		return;
 	end
+	
+	displayGame()
 
 	print();
 	turn();
@@ -319,7 +320,6 @@ function checkStand(hand_num)
 	end
 
 	if (not plrhand) then 
-		print(hand);
 		return; 
 	end
 	
@@ -393,7 +393,7 @@ end
 	
 -- Print final game state and clear all game data
 function finishGame()
-	local dealer_str = "### Dealer - Val=" .. dealer.hand:optimalValue() .. " - " .. dealer:handToString();
+	local dealer_str = "### Dealer - Val=" .. dealer.hand:optimalValue() .. " - " .. dealer.hand:toString();
 	local player_str_1;
 	local player_str_2;
 	if (player.hand_1) then
@@ -403,6 +403,14 @@ function finishGame()
 		player_str_2 = "Player (hand 2) - Val=" .. player.hand_2:optimalValue() .. " - " .. player:handToString(2);
 	end
 
+	print("GAME OVER");
+	print(dealer_str);
+	if (player_str_1) then
+		print(player_str_1);
+	end
+	if (player_str_2) then
+		print(player_str_2);
+	end
 
 	player.hand_1 = nil;
 	player.hand_2 = nil;
