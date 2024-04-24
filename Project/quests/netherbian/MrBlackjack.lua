@@ -5,11 +5,26 @@ local player_due = 0;
 local player_handin = 0;
 local paying = false;
 
+FLAG_WINNINGS = "-BJWINNINGS";
+FLAG_WAGERED = "-BJWAGERED";
+
+function addToDB(flag, amount)
+	if (not flag or not amount) then
+		print("ERROR: Cannot add with nil flag/amount");
+		return;
+	end
+
+	local FULL_FLAG = client:AccountID() .. flag
+
+	local original = (tonumber(client:GetBucket(FULL_FLAG)) or 0);
+	client:SetBucket(FULL_FLAG, tostring(amount+original));
+end
+
 function returnMoney(cl)
 	cl = cl or client;
+	if (not cl) then return; end
+
 	local total = (player_due or 0) + (player_handin or 0);
-	player_due = 0;
-	player_handin = 0;
 	
 	local copper = total % 10;
 	total = math.floor(total / 10);
@@ -19,12 +34,29 @@ function returnMoney(cl)
 	total = math.floor(total / 10);
 	local platinum = total % 10;
 	cl:AddMoneyToPP(copper, silve, gold, platinum, true);
+	player_due = 0;
+	player_handin = 0;
 end
 
-math.randomseed(os.time())
+-- Get payment amount from player (in copper)
+function parseMoney(text)
+	paying = false;
+	if (not text) then
+		return;
+	end
+
+	local amount = tonumber(text);
+	if (amount and amount > 0) then
+		if (client:TakeMoneyFromPP(amount, true)) then
+			player_handin = player_handin + amount;
+		end
+	end
+end
 
 
 	-- ### BEGIN CARD CLASS ### --
+
+math.randomseed(os.time())
 
 Card = {
 	-- Adds (index-1) * 4 to the id
@@ -364,6 +396,7 @@ function getFirstBet(text)
 	end
 
 	player.hand_1_bet = player_handin;
+	addToDB(FLAG_WAGERED, player_handin);
 	player_handin = 0;
 	initializeGame();
 end
@@ -583,6 +616,7 @@ function split(text)
 	player.hand_2 = Deck.new(0,0);
 	player.hand_2:addTop(player.hand_1:drawTop());
 	player.hand_2_bet = player_handin;
+	addToDB(FLAG_WAGERED, player_handin);
 	player_handin = 0;
 
 	endTurn();
@@ -619,6 +653,7 @@ function finishGame()
 	player.splitAcePair = false;
 
 	-- Give any money left in player_handin
+	addToDB(FLAG_WINNINGS, player_due);
 	returnMoney();
 
 	getFirstBet(); -- You can never excape B L A C K J A C K
@@ -627,21 +662,6 @@ end
 
 	-- ### MAIN CODE ### --
 
-
--- Get payment amount from player (in copper)
-function parseMoney(text)
-	paying = false;
-	if (not text) then
-		return;
-	end
-
-	local amount = tonumber(text);
-	if (amount and amount > 0) then
-		if (client:TakeMoneyFromPP(amount, true)) then
-			player_handin = player_handin + amount;
-		end
-	end
-end
 
 
 -- EVENT STUFF
@@ -655,6 +675,12 @@ function event_say(e)
 	if (e.message == "Cash Out") then
 		returnMoney(client);
 	end
+
+	if (e.message == "Stats") then
+		npc:Say("Total winnings - " .. client:GetBucket((client:AccountID()) .. FLAG_WINNINGS));
+		npc:Say("Total wagered - " .. client:GetBucket((client:AccountID()) .. FLAG_WAGERED));
+		return;
+	end
 	
 	-- Get payment from player
 	if (paying) then
@@ -665,8 +691,8 @@ function event_say(e)
 	STAGE(tostring(e.message));
 
 	-- Give player option to cash out if they're owed money
-	if (player_due > 0) then
-		npc:Say("Current winnings/owed - " .. player_due .. "c [Cash Out]");
+	if (player_due+player_handin > 0) then
+		npc:Say("Current winnings/owed - " .. player_due+player_handin .. "c [Cash Out]");
 	end
 end
 
