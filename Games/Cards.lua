@@ -143,6 +143,10 @@ function Deck:addTop(card)
 	table.insert(self.cards, card);
 end
 
+function Deck:count()
+	return #self.cards;
+end
+
 -- Prints the entire deck (subject to change)
 function Deck:toString()
 	local string = "{:";
