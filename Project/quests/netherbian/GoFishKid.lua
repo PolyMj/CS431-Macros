@@ -1,11 +1,10 @@
 local npc;
 local client;
 
-local player_due = 0;
+local player_bet = 0;
 local player_handin = 0;
 local paying = false;
-
-local STAGE = nil;
+local canPlay = false;
 
 FLAG_WINNINGS = "-GFWINNINGS";
 FLAG_WAGERED = "-GFWAGERED";
@@ -26,7 +25,7 @@ function returnMoney(cl)
 	cl = cl or client;
 	if (not cl) then return; end
 
-	local total = (player_due or 0) + (player_handin or 0);
+	local total = (player_bet or 0) + (player_handin or 0);
 	
 	local copper = total % 10;
 	total = math.floor(total / 10);
@@ -36,7 +35,7 @@ function returnMoney(cl)
 	total = math.floor(total / 10);
 	local platinum = total % 10;
 	cl:AddMoneyToPP(copper, silve, gold, platinum, true);
-	player_due = 0;
+	player_bet = 0;
 	player_handin = 0;
 end
 
@@ -281,16 +280,16 @@ end
 
 function checkStatus()
 	if (player.hand:count() <= 0) then
-		npc:Say("Win");
+		win();
 	elseif (kid.hand:count() <= 0) then
-		npc:Say("Lose");
+		lose();
 	elseif (deck:count() <= 0) then
 		if (player.hand:count() < kid.hand:count()) then
-			npc:Say("Win");
+			win();
 		elseif (player.hand:count() < kid) then
-			npc:Say("Tie");
+			tie();
 		else
-			npc:Say("Lose");
+			lose();
 		end
 	-- Game not over
 	else
@@ -325,7 +324,6 @@ function parseRank(text)
 		displayGame();
 
 		npc:Say(createPlayerPrompt());
-		STAGE = parseRank;
 		return;
 	end
 
@@ -400,28 +398,62 @@ function singleRound(rankID)
 	checkStatus();
 end
 
+function tie()
+	npc:Say("Ugggh, I guess I can give your money back at least.");
+	returnMoney();
+end
 
 
-STAGE = parseRank;
+function lose()
+	npc:Say("Ha! Better luck next time!");
+	player_bet = 0;
+end
+
+
+function win()
+	npc:Say("Damnit! How'd you do that!? Fine, whatever, have it.");
+	client:SummonItem(69420) -- Real
+	returnMoney();
+end
+
+
+
 
 function event_say(e)
 	npc = e.self;
 	client = e.other;
-	if (paying) then
-		-- Pay
+	if (e.message == "Cash Out") then
+		returnMoney();
 	end
-	
+
 	-- Get payment from player
 	if (paying) then
 		parseMoney(e.message);
 	end
 
-	-- Return to relevant stage of blackjack
-	STAGE(e.message);
+	if (canPlay) then
+		parseRank(e.message);
+	else
+		if (player_handin <= 0) then
+			npc:Say("If you wanna play with me, you're gonna have to pay up");
+			npc:Say("Say your bet, at least 200,000c and then we'll see");
+			paying = true;
+		elseif (player_handin < 200000) then
+			npc:Say("That won't cut it, cheapskate! I said 200,000");
+			paying = true;
+		else
+			npc:Say("Now we're talking...");
+			paying = false;
+			canPlay = true;
+			player_bet = player_handin;
+			player_handin = 0;
+			parseRank();
+		end
+	end
 
 	-- Give player option to cash out if they're owed money
-	if (player_due+player_handin > 0) then
-		npc:Say("Current winnings/owed - " .. player_due+player_handin .. "c [Cash Out]");
+	if (player_handin > 0) then
+		npc:Say("Money given - " .. player_handin .. "c [Cash Out]");
 	end
 end
 

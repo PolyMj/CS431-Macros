@@ -277,13 +277,14 @@ function Deck:optimalValue()
 end
 
 function Deck:isBlackjack()
-	if (self.cards[1]:isAce()) then
-		return (self.cards[2]:value() == 10);
-	elseif (self.cards[2]:isAce()) then
-		return (self.cards[1]:value() == 10);
-	else
-		return false;
+	if (#self.cards == 2) then
+		if (self.cards[1]:isAce()) then
+			return ((self.cards[2]:value()) == 10);
+		elseif (self.cards[2]:isAce()) then
+			return (self.cards[1]:value() == 10);
+		end
 	end
+	return false;
 end
 
 
