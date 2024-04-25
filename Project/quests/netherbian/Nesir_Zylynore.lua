@@ -20,6 +20,8 @@ function event_trade(e)
 	if(qglobals["Nesir's_Zweihandler"] ~= nil or qglobals) then
 		e.self:Say("By the veil of night! Is that my Zweizwei? Thank the gods!");
 		e.self:Say("Here, it's not much, but I was saving up to challege him again, its only right that you have it. ");
-		e.other:AddMoneyToPP(186070, true);
+		e.other:AddPlatinum(186, true);
+		e.self:Say("Also, here's the sword I was using in the meantime. It's not enough to repay you but I hope you'll accept it regardless. ");
+		e.other:SummonItem(122674); -- Random got-tier sword
 	end
 end

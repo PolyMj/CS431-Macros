@@ -25,18 +25,7 @@ function returnMoney(cl)
 	cl = cl or client;
 	if (not cl) then return; end
 
-	local total = (player_bet or 0) + (player_handin or 0);
-	
-	local copper = total % 10;
-	total = math.floor(total / 10);
-	local silve = total % 10;
-	total = math.floor(total / 10);
-	local gold = total % 10;
-	total = math.floor(total / 10);
-	local platinum = total % 10;
-	cl:AddMoneyToPP(copper, silve, gold, platinum, true);
-	player_bet = 0;
-	player_handin = 0;
+	cl:AddPlatinum(200, true);
 end
 
 -- Get payment amount from player (in copper)
@@ -422,38 +411,30 @@ end
 function event_say(e)
 	npc = e.self;
 	client = e.other;
-	if (e.message == "Cash Out") then
-		returnMoney();
+	if (e.message:findi("Hail")) then
+		npc:Say("*gestures with sword* Like it? Won it off some loser down the street. Wanna [play for it]?");
 	end
-
-	-- Get payment from player
-	if (paying) then
-		parseMoney(e.message);
+	if (e.message == "play for it") then
+		local winnings = tonumber(client:GetBucket(client:AccountID() .. "-BJWINNINGS"));
+		if (winnings < 0) then
+			npc:Say("You'll have to play with my bro first. Make some bank with him, then we'll talk.");
+		elseif (winnings < 80000) then
+			npc:Say("My bro says you suck, and your bets are weak. Come back when you've won at least 80p. " .. math.floor(winnings/1000) .. "p just won't cut it.");
+		else
+			npc:Say("Alright, but you'll have to pay. Maybe... [200 platinum]?");
+		end
+	end
+	if (e.message == "200 platinum") then
+		if (client:TakePlatinum(200, true)) then
+			npc:Say("Heh it's a deal then!");
+			canPlay = true;
+		else
+			npc:Say("Damn you're broke, 200p is chump change and you ain't got it? Get outta here. ");
+		end
 	end
 
 	if (canPlay) then
 		parseRank(e.message);
-	else
-		if (player_handin <= 0) then
-			npc:Say("If you wanna play with me, you're gonna have to pay up");
-			npc:Say("Say your bet, at least 200,000c and then we'll see");
-			paying = true;
-		elseif (player_handin < 200000) then
-			npc:Say("That won't cut it, cheapskate! I said 200,000");
-			paying = true;
-		else
-			npc:Say("Now we're talking...");
-			paying = false;
-			canPlay = true;
-			player_bet = player_handin;
-			player_handin = 0;
-			parseRank();
-		end
-	end
-
-	-- Give player option to cash out if they're owed money
-	if (player_handin > 0) then
-		npc:Say("Money given - " .. player_handin .. "c [Cash Out]");
 	end
 end
 

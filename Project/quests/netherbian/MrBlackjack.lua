@@ -40,15 +40,21 @@ end
 
 -- Get payment amount from player (in copper)
 function parseMoney(text)
-	paying = false;
 	if (not text) then
 		return;
 	end
 
 	local amount = tonumber(text);
-	if (amount and amount > 0) then
+	if (not amount) then
+		npc:Say("Sorry, didn't catch that");
+		return;
+	end
+	if (amount > 0) then
 		if (client:TakeMoneyFromPP(amount, true)) then
 			player_handin = player_handin + amount;
+			paying = false;
+		else
+			npc:Say("Sorry, looks like you don't have that much. ");
 		end
 	end
 end
@@ -375,6 +381,10 @@ function initializeGame()
 	dealer.hand:addTop(deck:drawRandom());
 	dealer.hand:addTop(deck:drawRandom());
 
+	player.hand_1_bet = player_handin;
+	addToDB(FLAG_WAGERED, player_handin);
+	player_handin = 0;
+
 	endTurn(); -- Basically after turn 0 I guess idk
 end
 
@@ -396,9 +406,6 @@ function getFirstBet(text)
 		return;
 	end
 
-	player.hand_1_bet = player_handin;
-	addToDB(FLAG_WAGERED, player_handin);
-	player_handin = 0;
 	initializeGame();
 end
 
@@ -657,7 +664,7 @@ function finishGame()
 	addToDB(FLAG_WINNINGS, player_due);
 	returnMoney();
 
-	getFirstBet(); -- You can never excape B L A C K J A C K
+	STAGE = nil;
 end
 
 
@@ -666,15 +673,30 @@ end
 
 
 -- EVENT STUFF
-STAGE = getFirstBet;
+STAGE = nil;
 
 function event_say(e)
 	npc = e.self;
 	client = e.other;
 
-	-- Pay player back
-	if (e.message == "Cash Out") then
+	if (e.message:findi("Hail")) then
+		npc:Say("Hey there, did my [lil bro] send you? Wanna [play a game]");
+		return;
+	elseif(e.message == "lil bro") then
+		npc:Say("He's just up the road. He doesn't play with just anyone though. Gotta rack up some wins with me first. ");
+		return;
+	elseif(e.message == "play a game") then
+		npc:Say("Round of blackjack? Gotta [pay up] first though. ");
+		return;
+	elseif(e.message == "pay up") then
+		npc:Say("Alright, tell me how much you wanna bet in copper.");
+		paying = true;
+		return;
+	elseif(e.message == "back out") then
+		npc:Say("Fine. Boring prick. ");
+		paying = false;
 		returnMoney(client);
+		return;
 	end
 
 	if (e.message == "Stats") then
@@ -686,14 +708,25 @@ function event_say(e)
 	-- Get payment from player
 	if (paying) then
 		parseMoney(e.message);
+		-- If paying from a stage (e.g. split(), return to that stage)
+		if (STAGE) then
+			STAGE();
+			return;
+		end
+	
+		if (player_handin < 500) then
+			npc:Say(player_handin .. "? Is that it? Gonna need to fill my pockets more than that, [pay up] or [back out]");
+			return;
+		else
+			npc:Say("Now we're talking. Let's start. ");
+			initializeGame();
+		end
+		return;
 	end
 
 	-- Return to relevant stage of blackjack
-	STAGE(tostring(e.message));
-
-	-- Give player option to cash out if they're owed money
-	if (player_due+player_handin > 0) then
-		npc:Say("Current winnings/owed - " .. player_due+player_handin .. "c [Cash Out]");
+	if (STAGE) then
+		STAGE(tostring(e.message));
 	end
 end
 
