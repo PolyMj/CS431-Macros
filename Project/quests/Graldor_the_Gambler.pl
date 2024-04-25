@@ -28,7 +28,7 @@ elsif ($text =~/Where did you lose it?/i) {
         quest::say("success! bucket key is ($bucket_key)");
     }
     else {
-        quest::say("Fail!")
+        quest::say("Fail!");
     }
 }
 elsif ($text =~/reset bucket/i) {
