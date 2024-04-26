@@ -1,10 +1,15 @@
 local npc;
 local client;
 
+-- Place all importable lua files in /server/quests/, then add this to the path:
+package.path = package.path .. ";/home/eqemu/server/quests/?.lua";
+require("Obj");
 
 -- Button presses come through event_say
 -- Dialogue windows are set up using this weird-ass markdown formatting
 -- Don't change windtype from 1, can break things and I honestly don't know what the deal is
+
+local object = Obj.new("Roberto");
 
 function event_say(e)
 	npc = e.self;
@@ -22,4 +27,5 @@ function event_say(e)
 	   -- USE A SEPARATE npc:Say() TO DISPLAY EXTRA RESPONSES
 
 	npc:Say(e.message);
+	npc:Say("Imported object: " .. object:toString());
 end
