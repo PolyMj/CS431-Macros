@@ -101,17 +101,24 @@ function BlackjackInstance.new(npc, client)
 	self._dealer = {
 		char = npc;
 		hand = nil;
-	};
 
-	-- For custom (and preset) dialogue
-	self.dialogue = {
-
+		toStringHidden = function(self)
+			if (self.hand:count() < 1) then
+				return "EMPTY";
+			end
+		
+			local str = "{: " .. self.hand.cards[1]:toString();
+			for i=2, self.hand:count() do
+				str = str .. " : " .. Card.faceDownCard();
+			end
+		
+			return str .. " :}";
+		end
 	};
 
 	self._outText = {
 		finishedHands = {};
 		activeHands = {};
-		dealerHand = nil;
 	};
 
 	self.RETURNS = {
@@ -128,19 +135,26 @@ function BlackjackInstance.new(npc, client)
 	return self;
 end
 
-function BlackjackInstance.defaultDealerAI(self)
-	self.dealer.hand = Deck.new(0,0);
 
-	self.dealer.hand:addTop(self.deck:drawRandom());
-	self.dealer.hand:addTop(self.deck:drawRandom());
+
+function BlackjackInstance.defaultDealerAI(self)
+	self._dealer.hand = Deck.new(0,0);
+
+	self._dealer.hand:addTop(self.deck:drawRandom());
+	self._dealer.hand:addTop(self.deck:drawRandom());
 end
 
 function BlackjackInstance:getDealerHand()
 	self:dealerAI();
 
-	if (self.dealer.hand:optimalValue() > 21 or self.dealer.hand:count() < 2) then
+	if (self._dealer.hand:optimalValue() > 21 or self._dealer.hand:count() < 2) then
 		self:defaultDealerAI();
 	end
+end
+
+function BlackjackInstance:addPlayerHand(hand, bet)
+	table.insert(self._player.hands, hand);
+	table.insert(self._player.bets, bet);
 end
 
 function BlackjackInstance:go(text)
@@ -155,44 +169,66 @@ function BlackjackInstance:_initializeGame()
 	self:getDealerHand();
 
 	-- Draw two random cards for the player
-	table.insert(self.player.hands, self.deck:drawRandom());
-	table.insert(self.player.hands, self.deck:drawRandom());
+	local player_hand = Deck.new(0,0);
+	player_hand:addTop(self.deck:drawRandom());
+	player_hand:addTop(self.deck:drawRandom());
+	self:addPlayerHand(player_hand, 0);
+end
+
+
+function BlackjackInstance:displayGame()
+	local str = "FINISHED HANDS: ";
+	for i,v in pairs(self._outText.finishedHands) do
+		str = str .. v;
+	end
+
+	str = str .. " # ACTIVE HANDS: ";
+	for i,v in pairs(self._outText.activeHands) do
+		str = str .. v;
+	end
+
+	str = str .. " # DEALER'S HAND: " .. self._dealer:toStringHidden();
+
+	self._dealer.char:Say(str);
 end
 
 
 function BlackjackInstance:_status()
-	for i,hand in pairs(self.player.hands) do
+	for i,hand in pairs(self._player.hands) do
 		local value = hand:optimalValue();
 		if (hand:isBlackjack()) then
 			self:_finnishHand(i, self.RETURNS.BLACKJACK, "Blackjack!");
 		elseif (value > 21) then
 			self:_finnishHand(i, self.RETURNS.LOSE, "Busted!");
 		else
-			table.inset(self.outText.activeHands, hand:toStringVal());
+			table.insert(self._outText.activeHands, hand:toStringVal());
 		end
 	end
+
+	self:displayGame();
+	self._STAGE = BlackjackInstance._status;
 end
 
 
 
 function BlackjackInstance:_finnishHand(index, return_factor, message)
-	if (index > 0 and index <= #self.player.hands) then
+	if (index > 0 and index <= #self._player.hands) then
 		-- Pay back player return_facotor * their bet
-		self.player.due = math.floor(self.player.due + self.player.bets[index] * return_factor);
+		self._player.due = math.floor(self._player.due + self._player.bets[index] * return_factor);
 
 		-- Add the hand to the outText to be displayed later
 		table.insert(
 			self._outText.finishedHands, 
-			(message or "Finnished") .. " - " .. self.player.hands[index]:toStringVal()
+			(message or "Finnished") .. " - " .. self._player.hands[index]:toStringVal()
 		);
 
 		-- Remove hand and bet
-		table.remove(self.player.bets, index);
-		table.remove(self.player.hands, index);
+		table.remove(self._player.bets, index);
+		table.remove(self._player.hands, index);
 	end
 end
 
 -- Returns all due money to the player, both from winnings and remaining handin (if any)
 function BlackjackInstance:Cashout()
-	payClient(self.player.handin + self.player.due);
+	payClient(self._player.handin + self._player.due);
 end

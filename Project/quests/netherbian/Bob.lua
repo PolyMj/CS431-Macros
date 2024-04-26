@@ -14,20 +14,18 @@ function BlackjackInstance:customDealerAI()
 	self.dealer.char:Say("Fuck you I get 3 cards");
 end
 
+local game;
+
 
 function event_say(e)
 	npc = e.self;
 	client = e.other;
 
 	if (e.message:findi("Hail")) then
-		local game = BlackjackInstance.new(npc, client);
+		game = BlackjackInstance.new(npc, client);
+	else
 		if (game) then
-			npc:Say(game.player.char:AccountName());
-			game.getDealerHand = BlackjackInstance.customDealerAI;
-
-			game:initializeGame()
-	
-			npc:Say(game.dealer.hand:toString());
+			game:go();
 		end
 	end
 
