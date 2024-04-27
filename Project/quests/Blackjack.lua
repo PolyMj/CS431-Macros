@@ -127,7 +127,6 @@ function BlackjackInstance.new(npc, client, required_payment)
 		finishedHands = {};
 		optionsPrompt = "";
 		options = {};
-		buttons = {};
 		errorDialogue = {};
 	};
 
@@ -143,12 +142,7 @@ function BlackjackInstance.new(npc, client, required_payment)
 	self.dealerAI = BlackjackInstance.defaultDealerAI;
 
 
-	if (self:fromBucket(npc, client)) then
-		self._STAGE = BlackjackInstance._turn;
-	else
-		npc:Say("No save game found, creating new...");
-		self._STAGE = BlackjackInstance._initializeGame;
-	end
+	self:_fromBucket(npc, client)
 
 	return self;
 end
@@ -179,7 +173,7 @@ end
 function BlackjackInstance:getDealerHand()
 	self:dealerAI();
 
-	if (self._dealer.hand:optimalValue() > 21 or self._dealer.hand:count() < 2) then
+	if (self._dealer.hand:optimalValue() > 21 or self._dealer.hand:count() < 1) then
 		self:defaultDealerAI();
 	end
 end
@@ -190,7 +184,14 @@ function BlackjackInstance:addPlayerHand(hand, bet)
 end
 
 -- Main function run from quest NPCs
-function BlackjackInstance:go(text)
+function BlackjackInstance:go(text, client)
+	-- Checks if passed in client matches current. If not, save other game and create new game
+	if (client and self._player.char:AccountID() ~= client:AccountID()) then
+		self:exit();
+		self:_fromBucket(self._dealer.char, client);
+		return;
+	end
+
 	if (text and text == "Exit" and #self._player.hands > 0) then
 		self._dealer.char:Say("Game saved");
 		self:exit();
@@ -200,6 +201,7 @@ function BlackjackInstance:go(text)
 end
 
 function BlackjackInstance:exit()
+	self:Cashout();
 	local FLAG = BLACKJACK_FLAG .. self._dealer.char:GetName() .. self._player.char:AccountID();
 
 	local data = "";
@@ -216,9 +218,22 @@ function BlackjackInstance:exit()
 	self._player.char:SetBucket(FLAG, data);
 end
 
-function BlackjackInstance:fromBucket(npc, client)
+function BlackjackInstance:_fromBucket(npc, client)
 	local FLAG = BLACKJACK_FLAG .. npc:GetName() .. client:AccountID();
 	local data = client:GetBucket(FLAG);
+
+	-- If data bucket load was successful, play
+	if (self:_parseBucket(data)) then
+		self._STAGE = BlackjackInstance._turn;
+	-- Otherwise, new game
+	else
+		self._STAGE = BlackjackInstance._initializeGame;
+	end
+
+	client:DeleteBucket(FLAG);
+end
+
+function BlackjackInstance:_parseBucket(data)
 	if (#data < 1) then return false end
 
 	local chunks = {};
@@ -259,6 +274,7 @@ function BlackjackInstance:_initializeGame()
 			self._player.handin .. "/" .. self.required_payment .. ")"
 		);
 		self.requesting_payment = true;
+		self._STAGE = BlackjackInstance._initializeGame;
 		return;
 	end
 	self.requesting_payment = false;
@@ -284,10 +300,10 @@ end
 
 
 function BlackjackInstance:displayGame()
-	local dia_string = "{title: Blackjack with " .. self._dealer.char:GetName() .. "} ";
+	local dia_string = "{title: Blackjack with " .. self._dealer.char:GetCleanName() .. "} ";
 
-	dia_string = dia_string .. "{button_one: Exit} " .. -- DiaWinds really hate single custom buttons ig
-								"{button_two: Exit} ";
+	-- DiaWinds really hate single custom buttons ig
+	dia_string = dia_string .. "{button_one: Exit} {button_two: Exit} ";
 
 	-- Window type
 	dia_string = dia_string .. "wintype:1 ";
@@ -297,7 +313,7 @@ function BlackjackInstance:displayGame()
 	
 	-- Active hands
 	if (#self._player.hands > 0) then
-		dia_string = dia_string .. "{linebreak} {lb} Player's hands: ";
+		dia_string = dia_string .. "{linebreak} {lb} Your hands: ";
 
 		for i,hand in pairs(self._player.hands) do
 			dia_string = dia_string .. "{bullet} " .. hand:toStringVal() .. " ";
@@ -326,7 +342,7 @@ function BlackjackInstance:displayGame()
 		dia_string = dia_string .. "{linebreak} {gold} Total bet = " .. totalBet .. "~ ";
 	end
 
-	if (#self._player.hands < 0) then
+	if (#self._player.hands < 1) then
 		dia_string = dia_string .. "{linebreak} {r} GAME OVER";
 	else
 		if (#self._outText.errorDialogue > 0) then
@@ -350,6 +366,7 @@ function BlackjackInstance:displayGame()
 		self._dealer.char:Say(options_string);
 	end
 	self._outText.options = {};
+	self._outText.optionsPrompt = "";
 end
 
 

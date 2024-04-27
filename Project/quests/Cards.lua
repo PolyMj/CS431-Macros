@@ -29,8 +29,10 @@ end
 Card = {
 	-- Adds (index-1) * 4 to the id
 	RANKS = {"jo", "A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "Ja", "Q", "K"};
+	RANK_FULL_NAMES = {"Joker", "Ace", "2", "3", "4", "5", "6", "7", "8", "9", "10", "Jack", "Queen", "King"};
 	-- Adds (index-1) to the id
 	SUITES = {"S", "H", "D", "C"};
+	SUITE_FULL_NAMES = {"Spades", "Hearts", "Diamonds", "Clubs"};
 	ID_MIN = 0;
 	ID_NJ_MIN = 4;
 	ID_MAX = 55;
@@ -63,12 +65,18 @@ end
 
 function Card:suiteID() return self.id % 4 end;
 function Card:suiteStr() return self.SUITES[self:suiteID()+1] end;
+function Card:suiteFullStr() return self.SUITE_FULL_NAMES[self:suiteID()+1] end;
 
 function Card:rankID() return math.floor(self.id / 4); end
 function Card:rankStr() return self.RANKS[self:rankID()+1] end;
+function Card:rankFullStr() return self.RANK_FULL_NAMES[self:rankID()+1] end;
 
 function Card:toString()
 	return "|" .. self:rankStr() .. " of " .. self:suiteStr() .. "|";
+end
+
+function Card:toFullString()
+	return "|" .. self:rankFullStr() .. " of " .. self:suiteFullStr() .. "|";
 end
 
 function Card:toStringFaceDown()
@@ -144,6 +152,13 @@ function Deck:drawRandom()
 	return card;
 end
 
+-- Returns a random card without removing it
+function Deck:peekRandom()
+	local index = math.random(1,#self.cards);
+	local card = self.cards[index];
+	return card;
+end
+
 -- Inserts a card into a random location in the deck
 function Deck:insertRandom(card)
 	table.insert(self.cards, math.random(1,#self.cards+1), card);
@@ -167,6 +182,11 @@ function Deck:drawTop()
 	local card = self.cards[#self.cards];
 	table.remove(self.cards);
 	return card;
+end
+
+-- Returns a random card without removing it
+function Deck:peekTop()
+	return self.cards[#self.cards];
 end
 
 -- Add a card to the top of the deck
