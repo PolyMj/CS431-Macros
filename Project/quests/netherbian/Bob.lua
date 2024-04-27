@@ -21,15 +21,13 @@ function event_say(e)
 	npc = e.self;
 	client = e.other;
 
-	if (e.message:findi("Hail")) then
-		game = BlackjackInstance.new(npc, client);
+	if (game) then
+		game:go(e.message)
 	else
+		game = BlackjackInstance.new(npc, client);
 		if (game) then
 			game:go();
 		end
 	end
-
-
-	npc:Say("Test");
 
 end

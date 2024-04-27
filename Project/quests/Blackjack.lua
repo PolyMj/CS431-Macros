@@ -43,13 +43,14 @@ function Deck:optimalValue()
 end
 
 function Deck:isBlackjack()
-	if (self.cards[1]:isAce()) then
-		return (self.cards[2]:value() == 10);
-	elseif (self.cards[2]:isAce()) then
-		return (self.cards[1]:value() == 10);
-	else
-		return false;
+	if (#self.cards == 2) then
+		if (self.cards[1]:isAce()) then
+			return ((self.cards[2]:value()) == 10);
+		elseif (self.cards[2]:isAce()) then
+			return (self.cards[1]:value() == 10);
+		end
 	end
+	return false;
 end
 
 function Deck:toStringVal()
@@ -88,6 +89,8 @@ function BlackjackInstance.new(npc, client)
 		return nil;
 	end
 
+	self.requesting_payment = false;
+
 	self.deck = nil;
 
 	self._player = {
@@ -96,6 +99,7 @@ function BlackjackInstance.new(npc, client)
 		due = 0; -- Amount the player is owed (from winnings)
 		hands = {};
 		bets = {};
+		splitAce = false;
 	};
 
 	self._dealer = {
@@ -119,6 +123,11 @@ function BlackjackInstance.new(npc, client)
 	self._outText = {
 		finishedHands = {};
 		activeHands = {};
+		optionsPrompt = "";
+		options = {};
+		buttons = {};
+		errorDialogue = {};
+		totalBet = -1;
 	};
 
 	self.RETURNS = {
@@ -127,6 +136,8 @@ function BlackjackInstance.new(npc, client)
 		WIN = 2;
 		BLACKJACK = 3;
 	};
+
+	self._hand_selection = 0;
 
 	self.dealerAI = BlackjackInstance.defaultDealerAI;
 
@@ -154,13 +165,11 @@ end
 
 function BlackjackInstance:addPlayerHand(hand, bet)
 	table.insert(self._player.hands, hand);
-	table.insert(self._player.bets, bet);
+	table.insert(self._player.bets, (bet or 0));
 end
 
 function BlackjackInstance:go(text)
 	self:_STAGE(text);
-
-	self:_status();
 end
 
 
@@ -173,6 +182,7 @@ function BlackjackInstance:_initializeGame()
 	player_hand:addTop(self.deck:drawRandom());
 	player_hand:addTop(self.deck:drawRandom());
 	self:addPlayerHand(player_hand, 0);
+	self:_status();
 end
 
 
@@ -181,15 +191,53 @@ function BlackjackInstance:displayGame()
 	for i,v in pairs(self._outText.finishedHands) do
 		str = str .. v;
 	end
+	self._outText.finishedHands = {};
 
 	str = str .. " # ACTIVE HANDS: ";
 	for i,v in pairs(self._outText.activeHands) do
 		str = str .. v;
 	end
+	self._outText.activeHands = {};
 
 	str = str .. " # DEALER'S HAND: " .. self._dealer:toStringHidden();
 
+	if (self._outText.totalBet > 0) then
+		str = str .. "Total Bet = " .. self._outText.totalBet;
+	end
+	
+	if (#self._player.hands <= 0) then
+		str = str .. " # GAME OVER";
+	end
+
+
+	for i,v in pairs(self._outText.errorDialogue) do
+		str = str .. " # " .. v;
+	end
+	self._outText.errorDialogue = {};
+
+	for i,v in pairs(self._outText.buttons) do
+		str = str .. " [" .. v .. "]";
+	end
+
 	self._dealer.char:Say(str);
+
+	if (#self._outText.options > 0) then	
+		local options = (self._outText.optionsPrompt or "OPTIONS:");
+		for i,v in pairs(self._outText.options) do
+			options = options .. " [" .. v .. "]"
+		end
+		self._dealer.char:Say(options);
+	end
+	self._outText.options = {};
+
+	if (#self._outText.buttons > 0) then
+		local buttons = "BUTTONS: ";
+		for i,v in pairs(self._outText.buttons) do
+			buttons = buttons .. " [" .. v .. "]";
+		end
+		self._dealer.char:Say(buttons);
+	end
+	self._outText.buttons = {};
 end
 
 
@@ -197,21 +245,233 @@ function BlackjackInstance:_status()
 	for i,hand in pairs(self._player.hands) do
 		local value = hand:optimalValue();
 		if (hand:isBlackjack()) then
-			self:_finnishHand(i, self.RETURNS.BLACKJACK, "Blackjack!");
+			self:_finishHand(i, self.RETURNS.BLACKJACK, "Blackjack!");
 		elseif (value > 21) then
-			self:_finnishHand(i, self.RETURNS.LOSE, "Busted!");
+			self:_finishHand(i, self.RETURNS.LOSE, "Busted!");
 		else
 			table.insert(self._outText.activeHands, hand:toStringVal());
 		end
 	end
 
-	self:displayGame();
-	self._STAGE = BlackjackInstance._status;
+	if (#self._player.hands < 1) then
+		self._outText.bet = -1;
+	else
+		for i,bet in pairs(self._player.bets) do
+			self._outText.bet = self._outText.totalBet + bet;
+		end
+	end
+
+	if (#self._player.hands > 0) then
+		self:_turn();
+	else
+		self:displayGame();
+		self._STAGE = BlackjackInstance._initializeGame;
+	end
+end
+
+
+-- Start a player's turn, prompting them to select their move
+function BlackjackInstance:_turn()
+
+	local canHit = true;
+	if (self._player.splitAce) then
+		canHit = false;
+		for i,hand in pairs(self._player.hands) do
+			if (not hand.cards[1]:isAce()) then
+				canHit = true;
+				break;
+			end
+		end
+	end
+
+	local canSplit = false;
+	for i,hand in pairs(self._player.hands) do
+		if (hand:count() > 1) then
+			canSplit = true;
+			break;
+		end
+	end
+
+
+	if (canHit) then 
+		table.insert(self._outText.options, "Hit");
+	end
+
+	if (canSplit) then 
+		table.insert(self._outText.options, "Split");
+	end
+
+	table.insert(self._outText.options, "Stand");
+	table.insert(self._outText.options, "Stand All");
+
+	self._STAGE = BlackjackInstance._parseTurn;
+	self:displayGame()
+end
+
+
+function BlackjackInstance:_parseTurn(text)
+	if (not text) then
+		self:_turn();
+		return;
+	end
+
+	if (text == "Split") then
+		self:_split();
+	elseif (text == "Hit") then
+		self:_hit();
+	elseif (text == "Stand") then
+		self:_stand();
+	elseif (text == "Stand All") then
+		for index,hand in pairs(self._player.hands) do
+			self:_checkStand(index);
+		end
+		self:displayGame();
+	else
+		table.insert(self._outText.errorDialogue, "Sorry, not sure what you want to do.");
+		self:_turn();
+		return;
+	end
+end
+
+
+function BlackjackInstance:_split(text)
+	if (text and text == "Back") then
+		self:_turn();
+		return;
+	end
+
+	local hand_index = tonumber(text or "0");
+
+	if (hand_index <= 0 or hand_index > #self._player.hands) then
+		self._outText.optionsPrompt = "Select a hand to split:";
+		
+		for i,hand in pairs(self._player.hands) do
+			if (hand:count() > 1) then
+				table.insert(self._outText.options, i);
+			end
+		end
+
+		table.insert(self._outText.buttons, "Back");
+		self:displayGame();
+		self._STAGE = BlackjackInstance._split;
+		return;
+	end
+
+	self._hand_selection = hand_index
+	self:_buySplit();
+end
+
+
+function BlackjackInstance:_buySplit()
+	local hand = self._player.hands[self._hand_selection];
+	local bet = self._player.bets[self._hand_selection]
+
+	if (self._player.handin < bet) then
+		tables.insert(
+			self._outText.errorDialogue, 
+			"You're gonna need to pay at least " .. bet .. " to split that hand (" .. self._player.handin .. "/" .. bet .. ")"
+		);
+		self.requesting_payment = true;
+		return;
+	end
+	
+	if (self._player.hands[self._hand_selection]:count() > 1) then
+		local card = self._player.hands[self._hand_selection]:drawTop();
+		local new_hand = Deck.new(0,0);
+		new_hand:addTop(card);
+		table.insert(self._player.hands, new_hand);
+	else
+		self:_split();
+		return;
+	end
+	self:_status();
 end
 
 
 
-function BlackjackInstance:_finnishHand(index, return_factor, message)
+function BlackjackInstance:_hit(text)
+	if (text and text == "Back") then
+		self:_turn();
+		return;
+	end
+
+	local hand_index = tonumber(text) or 0;
+
+	if (hand_index <= 0 or hand_index > #self._player.hands) then
+		self._outText.optionsPrompt = "Select a hand to hit:";
+		if (self._player.splitAce) then
+			for i,hand in pairs(self._player.hands) do
+				if (not hand.cards[1]:isAce()) then
+					table.insert(self._outText.options, i);
+				end
+			end
+		else
+			for i,hand in pairs(self._player.hands) do
+				table.insert(self._outText.options, i);
+			end
+		end
+
+		table.insert(self._outText.buttons, "Back");
+		self._STAGE = BlackjackInstance._hit;
+		self:displayGame();
+		return;
+	end
+
+	if (self.splitAce) then
+		local hand = self._player.hands[hand_index];
+		if (hand.cards[1]:isAce()) then
+			self:_hit();
+			return;
+		end
+	end
+	self._player.hands[hand_index]:addTop(self.deck:drawRandom());
+	self:_status();
+end
+
+function BlackjackInstance:_stand(text)
+	if (text and text == "Back") then
+		self:_turn();
+		return;
+	end
+
+	local hand_index = tonumber(text or "0");
+
+	if (hand_index <= 0 or hand_index > #self._player.hands) then
+		self._outText.optionsPrompt = "Select a hand to stand:";
+		for i,hand in pairs(self._player.hands) do
+			table.insert(self._outText.options, i);
+		end
+		table.insert(self._outText.buttons, "Back");
+		self._STAGE = BlackjackInstance._stand;
+		self:displayGame();
+		return;
+	end
+
+	self:_checkStand(hand_index);
+	self:_status()
+end
+
+ -- Check the result of a stand with the given hand
+function BlackjackInstance:_checkStand(hand_index)
+	local hand = self._player.hands[hand_index];
+
+	if (hand:isBlackjack()) then
+		if (self._dealer.hand:isBlackjack()) then
+			self:_finishHand(hand_index, self.RETURNS.DRAW, "Tied with Blackjack!");
+		else
+			self:_finishHand(hand_index, self.RETURNS.BLACKJACK, "Won with Blackjack!");
+		end
+	elseif (hand:optimalValue() == self._dealer.hand:optimalValue()) then
+		self:_finishHand(hand_index, self.RETURNS.DRAW, "Tied with the dealer");
+	elseif (hand:optimalValue() < self._dealer.hand:optimalValue()) then
+		self:_finishHand(hand_index, self.RETURNS.LOSE, "Lost to the dealer");
+	else
+		self:_finishHand(hand_index, self.RETURNS.WIN, "Beat the dealer!");
+	end
+end
+
+
+function BlackjackInstance:_finishHand(index, return_factor, message)
 	if (index > 0 and index <= #self._player.hands) then
 		-- Pay back player return_facotor * their bet
 		self._player.due = math.floor(self._player.due + self._player.bets[index] * return_factor);
@@ -219,7 +479,7 @@ function BlackjackInstance:_finnishHand(index, return_factor, message)
 		-- Add the hand to the outText to be displayed later
 		table.insert(
 			self._outText.finishedHands, 
-			(message or "Finnished") .. " - " .. self._player.hands[index]:toStringVal()
+			(message or "finished") .. " - " .. self._player.hands[index]:toStringVal()
 		);
 
 		-- Remove hand and bet
