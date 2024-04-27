@@ -404,8 +404,10 @@ function GoFishInstance:_npcsTurn()
 	end
 
 	-- Find next valid rankID (if the current one isn't valid)
-	while (not self._npc.hand:hasAny(rankID)) do
+	local tries = 100;
+	while (not self._npc.hand:hasAny(rankID) and tries > 0) do
 		rankID = (rankID + 1) % #Card.RANKS;
+		tries = tries - 1;
 	end
 
 	local foundCount = self._npc.hand:fishAny(self._player.hand, rankID);
