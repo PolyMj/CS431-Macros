@@ -136,6 +136,8 @@ function BlackjackInstance.new(npc, client, required_payment)
 		BLACKJACK = 3;
 	};
 
+	self.USING_DIALOGUE_WINDOW = true;
+
 	self._hand_selection = 0;
 
 	self.dealerAI = BlackjackInstance.defaultDealerAI;
@@ -181,6 +183,7 @@ function BlackjackInstance:addPlayerHand(hand, bet)
 	table.insert(self._player.bets, (bet or 0));
 end
 
+-- Main function run from quest NPCs
 function BlackjackInstance:go(text)
 	self:_STAGE(text);
 end
@@ -234,7 +237,7 @@ function BlackjackInstance:displayGame()
 	if (#self._player.hands > 0) then
 		active_hands = " # ACTIVE HANDS:";
 		for i,hand in pairs(self._player.hands) do
-			active_hands = active_hands .. " " .. hand:toStringVal() .. " |";
+			active_hands = active_hands .. " " .. hand:toStringVal() .. " ";
 		end
 	end
 
@@ -252,7 +255,6 @@ function BlackjackInstance:displayGame()
 	local gs_string = "";
 	local error_string = "";
 	local options_string = "";
-	local button_string = "";
 	if (#self._player.hands <= 0) then
 		gs_string = " # GAME OVER";
 	else
@@ -272,20 +274,42 @@ function BlackjackInstance:displayGame()
 		self._outText.options = {};
 		
 		-- If using a dialogue window, will need to change this
-		if (#self._outText.buttons > 0) then
-			button_string = "BUTTONS: ";
-			for i,v in pairs(self._outText.buttons) do
-				button_string = button_string .. " [" .. v .. "]";
-			end
-		end
-		self._outText.buttons = {};
 	end
 
 	-- Stuff that can potentially go into a dialogue window
-	self._dealer.char:Say(
-		dealer_hand .. finished_hands .. active_hands .. 
-		bet_string .. gs_string .. error_string .. button_string
-	);
+	if (self.USING_DIALOGUE_WINDOW) then
+		local button_string = "";
+		if (#self._outText.buttons > 0) then
+			button_string = button_string .. "{button_one: " .. self._outText.buttons[1] .. "} ";
+		end
+		if (#self._outText.buttons > 1) then
+			button_string = button_string .. "{button_two: " .. self._outText.buttons[2] .. "} ";
+		end
+		self._outText.buttons = {};
+
+		self._player.char:DialogueWindow(
+			"{title: Blackjack with " .. self._dealer.char:GetName() .. "} " ..
+			button_string ..
+			"wintype:1  " .. 
+			"{y}" .. dealer_hand .. "~ {linebreak}" ..
+			"{lb}" .. active_hands .. "~ {linebreak}" ..
+			"{gray}" .. finished_hands .. "~ {linebreak}" ..
+			"{gold}" .. bet_string .. "~ {linebreak}" ..
+			"{r}" .. gs_string .. error_string .. "~ {linebreak}"
+		);
+	else
+		if (#self._outText.buttons > 0) then
+			for i,v in pairs(self._outText.buttons) do
+				options_string = options_string .. " [" .. v .. "]";
+			end
+		end
+		self._outText.buttons = {};
+
+		self._dealer.char:Say(
+			dealer_hand .. active_hands .. finished_hands .. 
+			bet_string .. gs_string .. error_string
+		);
+	end
 
 	-- This must go directly into chat
 	if (options_string ~= "") then
