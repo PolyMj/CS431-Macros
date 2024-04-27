@@ -54,7 +54,7 @@ function Deck:isBlackjack()
 end
 
 function Deck:toStringVal()
-	return "Value = " .. self:optimalValue() .. " - " .. self:toString();
+	return "Value of " .. self:optimalValue() .. " - " .. self:toString();
 end
 
 	-- End Card / Deck additions -- 
@@ -135,8 +135,6 @@ function BlackjackInstance.new(npc, client, required_payment)
 		WIN = 2;
 		BLACKJACK = 3;
 	};
-
-	self.USING_DIALOGUE_WINDOW = true;
 
 	self._hand_selection = 0;
 
@@ -219,102 +217,78 @@ end
 
 
 function BlackjackInstance:displayGame()
-	-- Dealer's hand
-	local dealer_hand = " # DEALER'S HAND: " .. self._dealer:toStringHidden();
+	local dia_string = "{title: Blackjack with " .. self._dealer.char:GetName() .. "} ";
 	
-	-- Display any hands that finished
-	local finished_hands = "";
-	if (#self._outText.finishedHands > 0) then
-		finished_hands = finished_hands .. "FINISHED HANDS:";
-		for i,v in pairs(self._outText.finishedHands) do
-			finished_hands = finished_hands .. " " .. v .. " |";
-		end
-		self._outText.finishedHands = {};
+	-- Buttons
+	if (#self._outText.buttons > 0) then
+		dia_string = dia_string .. "{button_one: " .. self._outText.buttons[1] .. "} ";
 	end
+	if (#self._outText.buttons > 1) then
+		dia_string = dia_string .. "{button_two: " .. self._outText.buttons[2] .. "} ";
+	end
+	self._outText.buttons = {};
 
+	-- Window type
+	dia_string = dia_string .. "wintype:1 ";
+
+	-- Dealer's hand
+	dia_string = dia_string .. "{linebreak} {y} Dealer's hand: {bullet}" .. self._dealer:toStringHidden() .. "~ ";
+	
 	-- Active hands
-	local active_hands = "";
 	if (#self._player.hands > 0) then
-		active_hands = " # ACTIVE HANDS:";
+		dia_string = dia_string .. "{linebreak} {lb} Player's hands: ";
+
 		for i,hand in pairs(self._player.hands) do
-			active_hands = active_hands .. " " .. hand:toStringVal() .. " ";
+			dia_string = dia_string .. "{bullet} " .. hand:toStringVal() .. " ";
+			dia_string = dia_string .. " with bet of " .. self._player.bets[i] .. "c ";
 		end
+		dia_string = dia_string .. "~ ";
 	end
 
-	-- Remainging bets
+	-- Finished hands
+	if (#self._outText.finishedHands > 0) then
+		dia_string = dia_string .. "{linebreak} {gray} Finished's hands: ";
+
+		for i,fh in pairs(self._outText.finishedHands) do
+			dia_string = dia_string .. "{bullet} " .. fh .. " ";
+		end
+		dia_string = dia_string .. "~ ";
+	end
+	self._outText.finishedHands = {};
+
+	-- Diaplay bet
 	local totalBet = 0;
-	local bet_string = ""
 	for i,bet in pairs(self._player.bets) do
 		totalBet = totalBet + bet;
 	end
 	if (totalBet > 0) then
-		bet_string = " # Remaining Bets = " .. totalBet;
+		dia_string = dia_string .. "{linebreak} {gold} Total bet = " .. totalBet .. "~ ";
 	end
-	
-	-- If the game is over
-	local gs_string = "";
-	local error_string = "";
-	local options_string = "";
-	if (#self._player.hands <= 0) then
-		gs_string = " # GAME OVER";
+
+	if (#self._player.hands < 0) then
+		dia_string = dia_string .. "{linebreak} {r} GAME OVER";
 	else
-		-- Any error dialogue (e.g. "Sorry, didn't catch that")
-		for i,v in pairs(self._outText.errorDialogue) do
-			error_string = error_string .. " # " .. v;
+		if (#self._outText.errorDialogue > 0) then
+			dia_string = dia_string .. "{linebreak} {r}"
+			for i,s in pairs(self._outText.errorDialogue) do
+				dia_string = dia_string .. "{bullet} " .. s .. " ";
+			end
+			dia_string = dia_string .. "~ ";
 		end
 		self._outText.errorDialogue = {};
-		
-		-- Options are said in main chat
-		if (#self._outText.options > 0) then	
-			options_string = (self._outText.optionsPrompt or "OPTIONS:");
-			for i,v in pairs(self._outText.options) do
-				options_string = options_string .. " [" .. v .. "]"
-			end
-		end
-		self._outText.options = {};
-		
-		-- If using a dialogue window, will need to change this
 	end
 
-	-- Stuff that can potentially go into a dialogue window
-	if (self.USING_DIALOGUE_WINDOW) then
-		local button_string = "";
-		if (#self._outText.buttons > 0) then
-			button_string = button_string .. "{button_one: " .. self._outText.buttons[1] .. "} ";
-		end
-		if (#self._outText.buttons > 1) then
-			button_string = button_string .. "{button_two: " .. self._outText.buttons[2] .. "} ";
-		end
-		self._outText.buttons = {};
+	self._player.char:DialogueWindow(dia_string);
 
-		self._player.char:DialogueWindow(
-			"{title: Blackjack with " .. self._dealer.char:GetName() .. "} " ..
-			button_string ..
-			"wintype:1  " .. 
-			"{y}" .. dealer_hand .. "~ {linebreak}" ..
-			"{lb}" .. active_hands .. "~ {linebreak}" ..
-			"{gray}" .. finished_hands .. "~ {linebreak}" ..
-			"{gold}" .. bet_string .. "~ {linebreak}" ..
-			"{r}" .. gs_string .. error_string .. "~ {linebreak}"
-		);
-	else
-		if (#self._outText.buttons > 0) then
-			for i,v in pairs(self._outText.buttons) do
-				options_string = options_string .. " [" .. v .. "]";
-			end
+	-- Options are said in main chat
+	if (#self._outText.options > 0) then	
+		options_string = (self._outText.optionsPrompt or "OPTIONS:");
+		for i,v in pairs(self._outText.options) do
+			options_string = options_string .. " [" .. v .. "]"
 		end
-		self._outText.buttons = {};
-
-		self._dealer.char:Say(
-			dealer_hand .. active_hands .. finished_hands .. 
-			bet_string .. gs_string .. error_string
-		);
-	end
-
-	-- This must go directly into chat
-	if (options_string ~= "") then
 		self._dealer.char:Say(options_string);
 	end
+	self._outText.options = {};
 end
 
 
@@ -440,9 +414,10 @@ function BlackjackInstance:_buySplit(text)
 	end
 
 	if (self._player.handin < bet) then
-		self._dealer.char:Say("You're gonna need to pay at least " .. bet .. " to split that hand (" .. self._player.handin .. "/" .. bet .. ")")
+		table.insert(self._outText.errorDialogue, "You're gonna need to pay at least " .. bet .. " to split that hand (" .. self._player.handin .. "/" .. bet .. ")")
 		self.requesting_payment = true;
 		self._STAGE = BlackjackInstance._buySplit;
+		self:displayGame();
 		return;
 	end
 
