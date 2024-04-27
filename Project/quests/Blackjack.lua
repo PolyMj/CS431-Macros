@@ -425,7 +425,7 @@ function BlackjackInstance:_turn()
 	table.insert(self._outText.options, "Stand All");
 
 	self._STAGE = BlackjackInstance._parseTurn;
-	self:displayGame()
+	self:displayGame();
 end
 
 
