@@ -46,6 +46,8 @@ function Deck:findRemoveSet(rankID)
 				if (id == card.id) then
 					table.insert(found_indices, ci);
 					table.remove(unfound(ui))
+				else
+					ui = ui + 1;
 				end
 			end
 		end
