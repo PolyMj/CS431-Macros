@@ -21,10 +21,19 @@ function event_say(e)
 	npc = e.self;
 	client = e.other;
 
+	if (string.sub(e.message, 1, 1) == "m") then
+		local amount = tonumber(string.sub(e.message, 2)) or 0;
+		if (game) then
+			game:handin(amount);
+			game:go();
+		end
+		return;
+	end
+
 	if (game) then
 		game:go(e.message)
 	else
-		game = BlackjackInstance.new(npc, client);
+		game = BlackjackInstance.new(npc, client, 10);
 		if (game) then
 			game:go();
 		end

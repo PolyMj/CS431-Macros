@@ -81,13 +81,15 @@ end
 
 BlackjackInstance = {};
 BlackjackInstance.__index = BlackjackInstance;
-function BlackjackInstance.new(npc, client)
+function BlackjackInstance.new(npc, client, required_payment)
 	self = setmetatable({}, BlackjackInstance);
 	
 	-- Return nil if invalid client or npc
 	if (not client or not npc) then
 		return nil;
 	end
+
+	self.required_payment = required_payment or 0;
 
 	self.requesting_payment = false;
 
@@ -146,7 +148,21 @@ function BlackjackInstance.new(npc, client)
 	return self;
 end
 
+-- Adds amount_copper to the player's handin total
+function BlackjackInstance:handin(amount_copper)
+	if (amount_copper > 0) then
+		self._player.handin = self._player.handin + amount_copper;
+	end
+end
 
+-- Forces the player to pay against their will
+function BlackjackInstance:forceHandin(amount_copper)
+	if (amount_copper > 0) then
+		if (self._player.char:TakeMoneyFromPP(amount_copper, true)) then
+			self._player.handin = self._player.handin + amount_copper;
+		end
+	end
+end
 
 function BlackjackInstance.defaultDealerAI(self)
 	self._dealer.hand = Deck.new(0,0);
@@ -174,6 +190,16 @@ end
 
 
 function BlackjackInstance:_initializeGame()
+	if (self._player.handin < self.required_payment) then
+		self._dealer.char:Say(
+			"You'll need to pay before you play (" .. 
+			self._player.handin .. "/" .. self.required_payment .. ")"
+		);
+		self.requesting_payment = true;
+		return;
+	end
+	self.requesting_payment = false;
+
 	self.deck = Deck.new(1,0);
 	self:getDealerHand();
 
@@ -181,7 +207,8 @@ function BlackjackInstance:_initializeGame()
 	local player_hand = Deck.new(0,0);
 	player_hand:addTop(self.deck:drawRandom());
 	player_hand:addTop(self.deck:drawRandom());
-	self:addPlayerHand(player_hand, 0);
+	self:addPlayerHand(player_hand, self._player.handin);
+	self._player.handin = 0;
 	self:_status();
 end
 
@@ -362,26 +389,33 @@ function BlackjackInstance:_split(text)
 end
 
 
-function BlackjackInstance:_buySplit()
+function BlackjackInstance:_buySplit(text)
 	local hand = self._player.hands[self._hand_selection];
 	local bet = self._player.bets[self._hand_selection]
 
-	if (self._player.handin < bet) then
-		tables.insert(
-			self._outText.errorDialogue, 
-			"You're gonna need to pay at least " .. bet .. " to split that hand (" .. self._player.handin .. "/" .. bet .. ")"
-		);
-		self.requesting_payment = true;
+	if (text and text == "Back") then
+		self:_status();
 		return;
 	end
+
+	if (self._player.handin < bet) then
+		self._dealer.char:Say("You're gonna need to pay at least " .. bet .. " to split that hand (" .. self._player.handin .. "/" .. bet .. ")")
+		self.requesting_payment = true;
+		self._STAGE = BlackjackInstance._buySplit;
+		return;
+	end
+
+	self.requesting_payment = false;
 	
 	if (self._player.hands[self._hand_selection]:count() > 1) then
 		local card = self._player.hands[self._hand_selection]:drawTop();
 		local new_hand = Deck.new(0,0);
 		new_hand:addTop(card);
-		table.insert(self._player.hands, new_hand);
+		self:addPlayerHand(new_hand, self._player.handin);
+		self._player.handin = 0;
 	else
 		self:_split();
+		self:Cashout();
 		return;
 	end
 	self:_status();
