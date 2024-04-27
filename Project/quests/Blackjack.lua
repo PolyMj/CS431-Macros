@@ -1,6 +1,8 @@
 package.path = package.path .. ";/home/eqemu/server/quests/?.lua";
 require("Cards");
 
+BLACKJACK_FLAG = "-BlackJack";
+
 	-- Additions to Cards / Deck classes -- 
 --
 function Card:value()
@@ -140,7 +142,13 @@ function BlackjackInstance.new(npc, client, required_payment)
 
 	self.dealerAI = BlackjackInstance.defaultDealerAI;
 
-	self._STAGE = BlackjackInstance._initializeGame;
+
+	if (self:fromBucket(npc, client)) then
+		self._STAGE = BlackjackInstance._turn;
+	else
+		npc:Say("No save game found, creating new...");
+		self._STAGE = BlackjackInstance._initializeGame;
+	end
 
 	return self;
 end
@@ -183,7 +191,64 @@ end
 
 -- Main function run from quest NPCs
 function BlackjackInstance:go(text)
+	if (text and text == "Exit" and #self._player.hands > 0) then
+		self._dealer.char:Say("Game saved");
+		self:exit();
+		return;
+	end
 	self:_STAGE(text);
+end
+
+function BlackjackInstance:exit()
+	local FLAG = BLACKJACK_FLAG .. self._dealer.char:GetName() .. self._player.char:AccountID();
+
+	local data = "";
+
+	data = data .. self._dealer.hand:to64() .. " ";
+
+	data = data .. self.deck:to64();
+
+	for i,hand in pairs(self._player.hands) do
+		data = data .. " " .. hand:to64();
+		data = data .. "_" .. self._player.bets[i];
+	end
+
+	self._player.char:SetBucket(FLAG, data);
+end
+
+function BlackjackInstance:fromBucket(npc, client)
+	local FLAG = BLACKJACK_FLAG .. npc:GetName() .. client:AccountID();
+	local data = client:GetBucket(FLAG);
+	if (#data < 1) then return false end
+
+	local chunks = {};
+
+	-- Separated by whitespace
+	for chunk in data:gmatch("%S+") do
+		table.insert(chunks, chunk);
+	end
+	if (#chunks < 3) then return false end
+
+	self._dealer.hand = Deck.from64(chunks[1]);
+	self.deck = Deck.from64(chunks[2]);
+
+	for i=2, #chunks do
+		local sub_chunks = {};
+		for sc in chunks[i]:gmatch("[^_]+") do
+			table.insert(sub_chunks, sc);
+		end
+
+		if (#sub_chunks == 2) then
+			table.insert(self._player.hands, Deck.from64(sub_chunks[1]));
+			table.insert(self._player.bets, tonumber(sub_chunks[2]));
+		end
+	end
+
+	if (#self._player.hands < 1) then
+		return false;
+	else
+		return true;
+	end
 end
 
 
@@ -202,6 +267,8 @@ function BlackjackInstance:_initializeGame()
 	self:getDealerHand();
 
 	-- Draw two random cards for the player
+	self._player.hands = {};
+	self._player.bets = {};
 	local player_hand = Deck.new(0,0);
 	player_hand:addTop(self.deck:drawRandom());
 	player_hand:addTop(self.deck:drawRandom());
@@ -218,15 +285,9 @@ end
 
 function BlackjackInstance:displayGame()
 	local dia_string = "{title: Blackjack with " .. self._dealer.char:GetName() .. "} ";
-	
-	-- Buttons
-	if (#self._outText.buttons > 0) then
-		dia_string = dia_string .. "{button_one: " .. self._outText.buttons[1] .. "} ";
-	end
-	if (#self._outText.buttons > 1) then
-		dia_string = dia_string .. "{button_two: " .. self._outText.buttons[2] .. "} ";
-	end
-	self._outText.buttons = {};
+
+	dia_string = dia_string .. "{button_one: Exit} " .. -- DiaWinds really hate single custom buttons ig
+								"{button_two: Exit} ";
 
 	-- Window type
 	dia_string = dia_string .. "wintype:1 ";
@@ -393,7 +454,7 @@ function BlackjackInstance:_split(text)
 			end
 		end
 
-		table.insert(self._outText.buttons, "Back");
+		table.insert(self._outText.options, "Back");
 		self:displayGame();
 		self._STAGE = BlackjackInstance._split;
 		return;
@@ -461,7 +522,7 @@ function BlackjackInstance:_hit(text)
 			end
 		end
 
-		table.insert(self._outText.buttons, "Back");
+		table.insert(self._outText.options, "Back");
 		self._STAGE = BlackjackInstance._hit;
 		self:displayGame();
 		return;
@@ -491,7 +552,7 @@ function BlackjackInstance:_stand(text)
 		for i,hand in pairs(self._player.hands) do
 			table.insert(self._outText.options, i);
 		end
-		table.insert(self._outText.buttons, "Back");
+		table.insert(self._outText.options, "Back");
 		self._STAGE = BlackjackInstance._stand;
 		self:displayGame();
 		return;
