@@ -14,8 +14,8 @@ local prizes = {
 
 function event_say(e)
     if e.message:findi("hail") then
-        -- local bucketkey = e.other:GetID();
-        e.self:Say("Welcome! Welcome to Shandeling's, the gaming hall of chance! The game room is downstairs. If you are lucky enough to get a Gold Ticket, be sure to bring it to me for a spin on the big wheel of prizes! Make sure to tip your waitress well! We also have some new games in the back if you're interested");
+        local bucketkey = e.other:GetID();
+        e.self:Say("Welcome! Welcome to Shandeling's, the gaming hall of chance! The game room is downstairs. If you are lucky enough to get a Gold Ticket, be sure to bring it to me for a spin on the big wheel of prizes! Make sure to tip your waitress well! We also have some new games in the back if you're interested" .. e.other:GetID());
     end
 end
 
