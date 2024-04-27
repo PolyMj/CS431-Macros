@@ -72,7 +72,6 @@ function payClient(client, amount)
 		
 		client:AddMoneyToPP(copp, silv, gold, play, true);
 	end
-
 end
 
 
@@ -124,12 +123,10 @@ function BlackjackInstance.new(npc, client, required_payment)
 
 	self._outText = {
 		finishedHands = {};
-		activeHands = {};
 		optionsPrompt = "";
 		options = {};
 		buttons = {};
 		errorDialogue = {};
-		totalBet = -1;
 	};
 
 	self.RETURNS = {
@@ -151,7 +148,7 @@ end
 -- Adds amount_copper to the player's handin total
 function BlackjackInstance:handin(amount_copper)
 	if (amount_copper > 0) then
-		self._player.handin = self._player.handin + amount_copper;
+		self._player.handin = self._player.handin + (amount_copper or 0);
 	end
 end
 
@@ -159,7 +156,7 @@ end
 function BlackjackInstance:forceHandin(amount_copper)
 	if (amount_copper > 0) then
 		if (self._player.char:TakeMoneyFromPP(amount_copper, true)) then
-			self._player.handin = self._player.handin + amount_copper;
+			self._player.handin = self._player.handin + (amount_copper or 0);
 		end
 	end
 end
@@ -213,58 +210,87 @@ function BlackjackInstance:_initializeGame()
 end
 
 
+function BlackjackInstance:gamestateString()
+
+end
+
+
 function BlackjackInstance:displayGame()
-	local str = "FINISHED HANDS: ";
-	for i,v in pairs(self._outText.finishedHands) do
-		str = str .. v;
+	-- Dealer's hand
+	local dealer_hand = " # DEALER'S HAND: " .. self._dealer:toStringHidden();
+	
+	-- Display any hands that finished
+	local finished_hands = "";
+	if (#self._outText.finishedHands > 0) then
+		finished_hands = finished_hands .. "FINISHED HANDS:";
+		for i,v in pairs(self._outText.finishedHands) do
+			finished_hands = finished_hands .. " " .. v .. " |";
+		end
+		self._outText.finishedHands = {};
 	end
-	self._outText.finishedHands = {};
 
-	str = str .. " # ACTIVE HANDS: ";
-	for i,v in pairs(self._outText.activeHands) do
-		str = str .. v;
+	-- Active hands
+	local active_hands = "";
+	if (#self._player.hands > 0) then
+		active_hands = " # ACTIVE HANDS:";
+		for i,hand in pairs(self._player.hands) do
+			active_hands = active_hands .. " " .. hand:toStringVal() .. " |";
+		end
 	end
-	self._outText.activeHands = {};
 
-	str = str .. " # DEALER'S HAND: " .. self._dealer:toStringHidden();
-
-	if (self._outText.totalBet > 0) then
-		str = str .. "Total Bet = " .. self._outText.totalBet;
+	-- Remainging bets
+	local totalBet = 0;
+	local bet_string = ""
+	for i,bet in pairs(self._player.bets) do
+		totalBet = totalBet + bet;
+	end
+	if (totalBet > 0) then
+		bet_string = " # Remaining Bets = " .. totalBet;
 	end
 	
+	-- If the game is over
+	local gs_string = "";
+	local error_string = "";
+	local options_string = "";
+	local button_string = "";
 	if (#self._player.hands <= 0) then
-		str = str .. " # GAME OVER";
-	end
-
-
-	for i,v in pairs(self._outText.errorDialogue) do
-		str = str .. " # " .. v;
-	end
-	self._outText.errorDialogue = {};
-
-	for i,v in pairs(self._outText.buttons) do
-		str = str .. " [" .. v .. "]";
-	end
-
-	self._dealer.char:Say(str);
-
-	if (#self._outText.options > 0) then	
-		local options = (self._outText.optionsPrompt or "OPTIONS:");
-		for i,v in pairs(self._outText.options) do
-			options = options .. " [" .. v .. "]"
+		gs_string = " # GAME OVER";
+	else
+		-- Any error dialogue (e.g. "Sorry, didn't catch that")
+		for i,v in pairs(self._outText.errorDialogue) do
+			error_string = error_string .. " # " .. v;
 		end
-		self._dealer.char:Say(options);
-	end
-	self._outText.options = {};
-
-	if (#self._outText.buttons > 0) then
-		local buttons = "BUTTONS: ";
-		for i,v in pairs(self._outText.buttons) do
-			buttons = buttons .. " [" .. v .. "]";
+		self._outText.errorDialogue = {};
+		
+		-- Options are said in main chat
+		if (#self._outText.options > 0) then	
+			options_string = (self._outText.optionsPrompt or "OPTIONS:");
+			for i,v in pairs(self._outText.options) do
+				options_string = options_string .. " [" .. v .. "]"
+			end
 		end
-		self._dealer.char:Say(buttons);
+		self._outText.options = {};
+		
+		-- If using a dialogue window, will need to change this
+		if (#self._outText.buttons > 0) then
+			button_string = "BUTTONS: ";
+			for i,v in pairs(self._outText.buttons) do
+				button_string = button_string .. " [" .. v .. "]";
+			end
+		end
+		self._outText.buttons = {};
 	end
-	self._outText.buttons = {};
+
+	-- Stuff that can potentially go into a dialogue window
+	self._dealer.char:Say(
+		dealer_hand .. finished_hands .. active_hands .. 
+		bet_string .. gs_string .. error_string .. button_string
+	);
+
+	-- This must go directly into chat
+	if (options_string ~= "") then
+		self._dealer.char:Say(options_string);
+	end
 end
 
 
@@ -275,16 +301,6 @@ function BlackjackInstance:_status()
 			self:_finishHand(i, self.RETURNS.BLACKJACK, "Blackjack!");
 		elseif (value > 21) then
 			self:_finishHand(i, self.RETURNS.LOSE, "Busted!");
-		else
-			table.insert(self._outText.activeHands, hand:toStringVal());
-		end
-	end
-
-	if (#self._player.hands < 1) then
-		self._outText.bet = -1;
-	else
-		for i,bet in pairs(self._player.bets) do
-			self._outText.bet = self._outText.totalBet + bet;
 		end
 	end
 
@@ -292,6 +308,7 @@ function BlackjackInstance:_status()
 		self:_turn();
 	else
 		self:displayGame();
+		self:Cashout();
 		self._STAGE = BlackjackInstance._initializeGame;
 	end
 end
@@ -468,7 +485,7 @@ function BlackjackInstance:_stand(text)
 		return;
 	end
 
-	local hand_index = tonumber(text or "0");
+	local hand_index = tonumber(text) or 0;
 
 	if (hand_index <= 0 or hand_index > #self._player.hands) then
 		self._outText.optionsPrompt = "Select a hand to stand:";
@@ -508,7 +525,7 @@ end
 function BlackjackInstance:_finishHand(index, return_factor, message)
 	if (index > 0 and index <= #self._player.hands) then
 		-- Pay back player return_facotor * their bet
-		self._player.due = math.floor(self._player.due + self._player.bets[index] * return_factor);
+		self._player.due = self._player.due + math.floor(self._player.bets[index] * return_factor);
 
 		-- Add the hand to the outText to be displayed later
 		table.insert(
@@ -524,5 +541,5 @@ end
 
 -- Returns all due money to the player, both from winnings and remaining handin (if any)
 function BlackjackInstance:Cashout()
-	payClient(self._player.handin + self._player.due);
+	payClient(self._player.char, self._player.handin + self._player.due);
 end
