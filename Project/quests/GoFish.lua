@@ -452,8 +452,6 @@ function GoFishInstance:_status()
 			self.gameOverStatus = GoFishInstance.STATUS.LOSE;
 		end
 	end
-
-	self._npc.char:Say("gameOverStatus = " .. self.gameOverStatus);
 	
 	if (self.gameOverStatus == GoFishInstance.STATUS.ONGOING) then
 		self:_turn();
