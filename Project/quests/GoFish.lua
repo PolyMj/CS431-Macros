@@ -128,7 +128,7 @@ function GoFishInstance.new(npc, client, required_payment, deck_count, inital_ca
 		npcFindSet = nil;
 	};
 
-	self.gameOverStatus = GoFishInstance.STATUS.UNSTARTED;
+	self.status = GoFishInstance.STATUS.UNSTARTED;
 
 	self.RETURNS = {
 		LOSE = 0;
@@ -186,7 +186,7 @@ end
 function GoFishInstance:_initializeGame()
 	-- Try to initialize from a databucket first
 	self:_fromBucket(self._npc.char, self._player.char);
-	if (self.gameOverStatus == GoFishInstance.STATUS.ONGOING) then
+	if (self.status == GoFishInstance.STATUS.ONGOING) then
 		self:_status();
 		return;
 	end
@@ -201,7 +201,7 @@ function GoFishInstance:_initializeGame()
 		self._STAGE = GoFishInstance._initializeGame;
 		return;
 	end
-	self.gameOverStatus = GoFishInstance.STATUS.ONGOING;
+	self.status = GoFishInstance.STATUS.ONGOING;
 	self._npc.foundSets = 0;
 	self._player.foundSets = 0;
 
@@ -235,7 +235,7 @@ function GoFishInstance:displayGame()
 	dia_string = dia_string .. "wintype:1 ";
 
 	-- Got game over --> display error dialogue
-	if (self.gameOverStatus == GoFishInstance.STATUS.ONGOING and #self._outText.errorDialogue > 0) then
+	if (self.status == GoFishInstance.STATUS.ONGOING and #self._outText.errorDialogue > 0) then
 		dia_string = dia_string .. "{linebreak} {r}";
 		for i,v in pairs(self._outText.errorDialogue) do
 			dia_string = dia_string .. " {bullet} " .. v
@@ -300,14 +300,14 @@ function GoFishInstance:displayGame()
 	self._outText.npcFindSet = nil;
 
 	-- If game over
-	if (self.gameOverStatus ~= GoFishInstance.STATUS.ONGOING) then
+	if (self.status ~= GoFishInstance.STATUS.ONGOING) then
 		dia_string = dia_string .. "{linebreak} {r} ";
 		-- Get exact game conclusion
-		if (self.gameOverStatus == GoFishInstance.STATUS.LOSE) then
+		if (self.status == GoFishInstance.STATUS.LOSE) then
 			dia_string = dia_string .. "You lose!";
-		elseif (self.gameOverStatus == GoFishInstance.STATUS.DRAW) then
+		elseif (self.status == GoFishInstance.STATUS.DRAW) then
 			dia_string = dia_string .. "It's a draw!";
-		elseif (self.gameOverStatus == GoFishInstance.STATUS.WIN) then
+		elseif (self.status == GoFishInstance.STATUS.WIN) then
 			dia_string = dia_string .. "You win!";
 		else
 			dia_string = dia_string .. "GAME OVER"; -- Should never happen, here just in case
@@ -374,7 +374,7 @@ function GoFishInstance:_fromBucket(npc, client)
 
 	-- If data bucket load was successful, play
 	if (self:_parseBucket(data)) then
-		self.gameOverStatus = GoFishInstance.STATUS.ONGOING;
+		self.status = GoFishInstance.STATUS.ONGOING;
 		self._STAGE = GoFishInstance._status;
 	-- Otherwise, new game
 	else
@@ -433,7 +433,7 @@ function GoFishInstance:go(text, client)
 	if (text and text == "Forfeit") then
 		self._STAGE = GoFishInstance._initializeGame;
 		self:_deleteBucket();
-		self.gameOverStatus = GoFishInstance.STATUS.FORFEIT;
+		self.status = GoFishInstance.STATUS.FORFEIT;
 		return;
 	end
 
@@ -451,15 +451,15 @@ function GoFishInstance:_status()
 	-- Check win/lose/draw
 	if (self._player.hand:count() <= 0) or (self._npc.hand:count() <= 0) or (self.deck:count() <= 0) then
 		if (self._player.foundSets > self._npc.foundSets) then
-			self.gameOverStatus = GoFishInstance.STATUS.WIN;
+			self.status = GoFishInstance.STATUS.WIN;
 		elseif (self._player.foundSets == self._npc.foundSets) then
-			self.gameOverStatus = GoFishInstance.STATUS.DRAW;
+			self.status = GoFishInstance.STATUS.DRAW;
 		else
-			self.gameOverStatus = GoFishInstance.STATUS.LOSE;
+			self.status = GoFishInstance.STATUS.LOSE;
 		end
 	end
 	
-	if (self.gameOverStatus == GoFishInstance.STATUS.ONGOING) then
+	if (self.status == GoFishInstance.STATUS.ONGOING) then
 		self:_turn();
 	else
 		self:displayGame();

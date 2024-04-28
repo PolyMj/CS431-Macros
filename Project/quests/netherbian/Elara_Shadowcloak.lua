@@ -31,13 +31,13 @@ function event_say(e)
     if (game) then
         game:go(e.message);
 
-        if (game.gameOverStatus == GoFishInstance.STATUS.WIN) then
+        if (game.status == GoFishInstance.STATUS.WIN) then
             winner(e);
             game = nil;
-        elseif (game.gameOverStatus == GoFishInstance.STATUS.LOSE) then
+        elseif (game.status == GoFishInstance.STATUS.LOSE) then
             loser(e);
             game = nil;
-        elseif (game.gameOverStatus == GoFishInstance.STATUS.DRAW) then
+        elseif (game.status == GoFishInstance.STATUS.DRAW) then
             draw(e);
             game = nil;
         end
