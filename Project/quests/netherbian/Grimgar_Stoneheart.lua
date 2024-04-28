@@ -90,8 +90,8 @@ function winner(e)
     e.self:Say("testing" .. bucketkey .. value);
     -- set winner status (1)
     eq.set_data(bucketkey, value);
-    local testvalue = eq.get_data(bucketkey);
-    e.self:Say("the bucket value is " .. testvalue);
+    -- local testvalue = eq.get_data(bucketkey);
+    -- e.self:Say("the bucket value is " .. testvalue);
 end
 
 
