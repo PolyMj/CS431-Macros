@@ -91,6 +91,8 @@ function BlackjackInstance.new(npc, client, required_payment)
 		return nil;
 	end
 
+	self.ENABLE_DEBUG_AI = false;
+
 	self.required_payment = required_payment or 0;
 
 	self.requesting_payment = false;
@@ -196,9 +198,15 @@ end
 function BlackjackInstance:getDealerHand()
 	self._dealer.hand = Deck.new(0,0);
 	
-	self:dealerAI();
+	local success, result = pcall(
+		function() return self:dealerAI() end
+	);
+	
+	if not success and self.ENABLE_DEBUG_AI then
+		self._dealer.char:Say("ERROR: " .. tostring(result));
+	end
 
-	if (self._dealer.hand:optimalValue() > 21 or self._dealer.hand:count() < 1) then
+	if (not success or self._dealer.hand:optimalValue() > 21 or self._dealer.hand:count() < 1) then
 		self.deck:addDeck(self._dealer.hand);
 		self._dealer.hand:clear();
 		self:defaultDealerAI();

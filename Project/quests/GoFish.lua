@@ -91,6 +91,8 @@ function GoFishInstance.new(npc, client, required_payment, deck_count, inital_ca
 		return nil;
 	end
 
+	self.ENABLE_DEBUG_AI = false;
+
 	self.required_payment = required_payment or 0;
 	self.requesting_payment = false;
 
@@ -536,8 +538,20 @@ function GoFishInstance:_npcsTurn()
 	if (self._npc.hand:count() <= 0 or self._player.hand:count() <= 0 or self.deck:count() <= 0) then
 		self:_status();
 	end
-
-	local rankID = self:npcAsk();
+	
+	local success, rankID = pcall(
+		function() return self:npcAsk() end
+	);
+	
+	if not success or (type(rankID) ~= "number") then
+		if self.ENABLE_DEBUG_AI then
+			self._npc.char:Say("ERROR: " .. tostring(rankID));
+		end
+		rankID = self:defaultNpcAsk();
+	end
+	if (not rankID) then
+		rankID = self:defaultNpcAsk();
+	end
 
 	-- Find next valid rankID (if the current one isn't valid)
 	local tries = #Card.RANKS;
@@ -560,10 +574,20 @@ function GoFishInstance:_npcsTurn()
 end
 
 function GoFishInstance:_npcGoFish()
-	local card = self:npcFish();
+	local success, card = pcall(
+		function() return self:npcFish() end
+	);
+	
+	if not success then
+		card = self:defaultFish();
+		if self.ENABLE_DEBUG_AI then
+			self._npc.char:Say("ERROR: " .. tostring(card));
+		end
+	end
 	if (not card) then
 		card = self:defaultFish();
 	end
+
 	self._npc.hand:addSort(card);
 
 	local rankID = card:rankID();
@@ -573,10 +597,20 @@ function GoFishInstance:_npcGoFish()
 	end
 end
 function GoFishInstance:_playerGoFish()
-	local card = self:playerFish();
+	local success, card = pcall(
+		function() return self:playerFish() end
+	);
+	
+	if not success then
+		card = self:defaultFish();
+		if self.ENABLE_DEBUG_AI then
+			self._npc.char:Say("ERROR: " .. tostring(card));
+		end
+	end
 	if (not card) then
 		card = self:defaultFish();
 	end
+
 	self._player.hand:addSort(card);
 
 	local rankID = card:rankID();

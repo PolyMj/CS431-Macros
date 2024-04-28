@@ -102,7 +102,7 @@ end
 
 
 function loser(e)
-    e.self:Say("Look's like Lady Luck's on my side tonight, better light next time");
+    e.self:Say("Look's like Lady Luck's on my side tonight, better luck next time");
 end
 
 
