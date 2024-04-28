@@ -4,7 +4,7 @@ sub EVENT_SAY {
 if($text=~/Hail/i){
     my $bucket_key = $client->CharacterID() . "-the-gamblers-reckoning";
     if(quest::get_data($bucket_key) == 2) {
-        quest::say("Thank you again for returning my item.[reset bucket]");
+        quest::say("Thank you again for returning my pendant, I don't know what I would have done without you.[reset bucket]");
     }
     elsif(quest::get_data($bucket_key) == 1) {
         quest::say("Have you found it yet? They should have it at the King's Court Casino. Please hurry![reset bucket]");
@@ -39,11 +39,11 @@ elsif ($text =~/reset bucket/i) {
 };
 
 sub EVENT_ITEM {
-    #todo change item to his quest item
-    if (plugin::check_handin(\%itemcount, 10037 => 1)) {
+    # 36465 is a lore item jade pendant
+    if (plugin::check_handin(\%itemcount, 36465 => 1)) {
         my $bucket_key = $client->CharacterID() . "-the-gamblers-reckoning";
         if(quest::get_data($bucket_key) == 1) {
-            quest::say("Success!");
+            quest::say("By the stars, you actually found it! My family's pendant, returned to me. I never thought I'd see it again. I don't have much to give you but here, please take this.");
             #todo change reward to something more relevant
             quest::summonitem(quest::ChooseRandom(13053, 10010, 10018, 10017));
             quest::ding();
@@ -52,8 +52,7 @@ sub EVENT_ITEM {
         }
         else {
              quest::say("Where did you get this?");
-            #return item
-             quest::summonitem(10037);
         }
 	}
+    plugin::return_items(%itemcount);
 };
