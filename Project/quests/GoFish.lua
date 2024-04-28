@@ -80,6 +80,7 @@ end
 
 GoFishInstance = {
 	STATUS = {
+		FORFEIT = -1;
 		ONGOING = 0;
 		LOSE = 1;
 		DRAW = 2;
@@ -143,6 +144,9 @@ function GoFishInstance.new(npc, client, required_payment, deck_count, inital_ca
 	self.npcAsk = GoFishInstance.defaultNpcAsk;
 
 	self._STAGE = GoFishInstance._initializeGame;
+
+	-- Get data from a data bucket (if data exists and is valid)
+	self:_fromBucket(npc, client);
 
 	return self;
 end
@@ -223,11 +227,15 @@ end
 function GoFishInstance:displayGame()
 	local dia_string = "{title: Go Fish with " .. self._npc.char:GetCleanName() .. "} ";
 
-	-- DiaWinds really hate single custom buttons ig
-	dia_string = dia_string .. "{button_one: Exit} {button_two: Exit} ";
+	dia_string = dia_string .. "{button_one: Exit} {button_two: Forfeit} ";
 
 	-- Window type
 	dia_string = dia_string .. "wintype:1 ";
+
+	-- Bet
+	if (self._player.bet > 0) then
+		dia_string = dia_string .. "{gold} Bet is " .. self._player.bet .. "c ~ ";
+	end
 
 	-- Deck
 	if (self.deck:count() > 0) then
@@ -325,6 +333,80 @@ function GoFishInstance:displayGame()
 	self._outText.optionsPrompt = "";
 end
 
+function GoFishInstance:exit()
+	self:Cashout();
+	local FLAG = GOFISH_FLAG .. self._npc.char:GetCleanName() .. self._player.char:AccountID();
+
+	local data = "";
+
+	-- Get player's bet
+	data = data .. (tostring(self._player.bet) or "0") .. " ";
+	-- Get player's hand
+	data = data .. self._player.hand:to64() .. " ";
+	-- Get player's found sets
+	data = data .. (tostring(self._player.foundSets) or "0") .. " ";
+	-- Get npc's hand
+	data = data .. self._npc.hand:to64() .. " ";
+	-- Get npc's found sets
+	data = data .. (tostring(self._npc.foundSets) or "0") .. " ";
+	-- Get deck
+	data = data .. self.deck:to64();
+
+	self._player.char:SetBucket(FLAG, data);
+
+	self._STAGE = GoFishInstance._initializeGame;
+end
+
+function GoFishInstance:_fromBucket(npc, client)
+	local FLAG = GOFISH_FLAG .. npc:GetCleanName() .. client:AccountID();
+	local data = client:GetBucket(FLAG);
+
+	-- If data bucket load was successful, play
+	if (self:_parseBucket(data)) then
+		self._STAGE = GoFishInstance._status;
+	-- Otherwise, new game
+	else
+		npc:Say("No valid data found, initializing new game...");
+		self._STAGE = GoFishInstance._initializeGame;
+	end
+
+	client:DeleteBucket(FLAG);
+end
+
+function GoFishInstance:_parseBucket(data)
+	if (#data < 5) then return false end
+
+	local chunks = {};
+
+	-- Separated by whitespace
+	for chunk in data:gmatch("%S+") do
+		table.insert(chunks, chunk);
+	end
+	if (#chunks ~= 6) then
+		self._npc.char:Say("Incorrect number of data chunks");
+		return false;
+	end
+
+	self._player.bet = tonumber(chunks[1]);
+
+	self._player.hand = Deck.from64(chunks[2]);
+
+	self._player.foundSets = tonumber(chunks[3]);
+
+	self._npc.hand = Deck.from64(chunks[4]);
+
+	self._npc.foundSets = tonumber(chunks[5]);
+
+	self.deck = Deck.from64(chunks[6]);
+
+	if (self._player.bet and self._player.hand and self._npc.hand and self._player.foundSets and self._npc.foundSets and self.deck) then
+		return true;
+	else
+		self._npc.char:Say("Data couldn't be initialized");
+		return false
+	end
+end
+
 
 -- Gameplay
 
@@ -336,7 +418,13 @@ function GoFishInstance:go(text, client)
 		return;
 	end
 
-	if (text and text == "Exit" and #self._player.hand > 0) then
+	if (text and text == "Forfeit") then
+		self._STAGE = GoFishInstance._initializeGame;
+		self.gameOverStatus = GoFishInstance.STATUS.FORFEIT;
+		return;
+	end
+
+	if (text and text == "Exit") then
 		self._npc.char:Say("Game saved");
 		self:exit();
 		return;
@@ -495,4 +583,6 @@ end
 -- Returns all due money to the player, both from winnings and remaining handin (if any)
 function GoFishInstance:Cashout()
 	payClient(self._player.char, self._player.handin + self._player.due);
+	self._player.handin = 0;
+	self._player.due = 0;
 end

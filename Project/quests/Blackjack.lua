@@ -205,7 +205,7 @@ end
 
 function BlackjackInstance:exit()
 	self:Cashout();
-	local FLAG = BLACKJACK_FLAG .. self._dealer.char:GetName() .. self._player.char:AccountID();
+	local FLAG = BLACKJACK_FLAG .. self._dealer.char:GetCleanName() .. self._player.char:AccountID();
 
 	local data = "";
 
@@ -219,10 +219,11 @@ function BlackjackInstance:exit()
 	end
 
 	self._player.char:SetBucket(FLAG, data);
+	self._STAGE = BlackjackInstance._initializeGame;
 end
 
 function BlackjackInstance:_fromBucket(npc, client)
-	local FLAG = BLACKJACK_FLAG .. npc:GetName() .. client:AccountID();
+	local FLAG = BLACKJACK_FLAG .. npc:GetCleanName() .. client:AccountID();
 	local data = client:GetBucket(FLAG);
 
 	-- If data bucket load was successful, play
@@ -622,4 +623,6 @@ end
 -- Returns all due money to the player, both from winnings and remaining handin (if any)
 function BlackjackInstance:Cashout()
 	payClient(self._player.char, self._player.handin + self._player.due);
+	self._player.handin = 0;
+	self._player.due = 0;
 end

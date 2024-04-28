@@ -34,7 +34,7 @@ function event_say(e)
 	if (game) then
 		game:go(e.message, client)
 	else
-		game = GoFishInstance.new(npc, client, 0);
+		game = GoFishInstance.new(npc, client, 10);
 		if (game) then
 			game:go(nil, client);
 		end
