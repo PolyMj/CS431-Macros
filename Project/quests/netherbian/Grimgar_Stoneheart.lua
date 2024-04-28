@@ -52,7 +52,7 @@ function event_say(e)
 
     
     if e.message:findi("game") then
-        local id = e.other:AccountID();
+        local id = e.other:CharacterID();
         local bucket = "-gambling-games-grimgar"
         local bucketkey = id .. bucket;
         if (eq.get_data(bucketkey) == "1") then
@@ -81,7 +81,7 @@ end
 
 function winner(e)
     -- get name of bucket
-    local id = e.other:AccountID();
+    local id = e.other:CharacterID();
     local bucket = "-gambling-games-grimgar"
     local bucketkey = id .. bucket;
     local value = "1";

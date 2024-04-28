@@ -152,7 +152,7 @@ function BlackjackInstance.new(npc, client, required_payment)
 end
 
 function BlackjackInstance:getFlagSuffix()
-	return self._dealer.char:GetCleanName() .. self._player.char:AccountID();
+	return self._dealer.char:GetCleanName() .. self._player.char:CharacterID();
 end
 
 function BlackjackInstance:getWinnings(client)
@@ -168,7 +168,7 @@ end
 
 -- Adds amount_copper to the player's handin total
 function BlackjackInstance:handin(amount_copper, client)
-	if (client and self._player.char:AccountID() ~= client:AccountID()) then
+	if (client and self._player.char:CharacterID() ~= client:CharacterID()) then
 		self:exit();
 		self:_fromBucket(self._dealer.char, client);
 	end
@@ -221,7 +221,7 @@ end
 -- Main function run from quest NPCs
 function BlackjackInstance:go(text, client)
 	-- Checks if passed in client matches current. If not, save other game and create new game
-	if (client and self._player.char:AccountID() ~= client:AccountID()) then
+	if (client and self._player.char:CharacterID() ~= client:CharacterID()) then
 		self:exit();
 		self:_fromBucket(self._dealer.char, client);
 		return;
@@ -278,7 +278,7 @@ function BlackjackInstance:_deleteBucket()
 end
 
 function BlackjackInstance:_fromBucket(npc, client)
-	local FLAG = BLACKJACK_FLAG .. npc:GetCleanName() .. client:AccountID();
+	local FLAG = BLACKJACK_FLAG .. npc:GetCleanName() .. client:CharacterID();
 	local data = client:GetBucket(FLAG);
 	
 	-- Set new client

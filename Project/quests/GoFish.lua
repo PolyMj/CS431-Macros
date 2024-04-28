@@ -146,13 +146,13 @@ end
 
 
 function GoFishInstance:getFlagSuffix()
-	return self._npc.char:GetCleanName() .. self._player.char:AccountID();
+	return self._npc.char:GetCleanName() .. self._player.char:CharacterID();
 end
 
 
 -- Adds amount_copper to the player's handin total
 function GoFishInstance:handin(amount_copper, client)
-	if (client and self._player.char:AccountID() ~= client:AccountID()) then
+	if (client and self._player.char:CharacterID() ~= client:CharacterID()) then
 		self:exit();
 		self:_fromBucket(self._dealer.char, client);
 	end
@@ -335,7 +335,7 @@ end
 
 function GoFishInstance:exit()
 	self:Cashout();
-	local FLAG = GOFISH_FLAG .. self._npc.char:GetCleanName() .. self._player.char:AccountID();
+	local FLAG = GOFISH_FLAG .. self._npc.char:GetCleanName() .. self._player.char:CharacterID();
 
 	local data = "";
 
@@ -358,13 +358,13 @@ function GoFishInstance:exit()
 end
 
 function GoFishInstance:_deleteBucket()
-	local FLAG = GOFISH_FLAG .. self._npc.char:GetCleanName() .. self._player.char:AccountID();
+	local FLAG = GOFISH_FLAG .. self._npc.char:GetCleanName() .. self._player.char:CharacterID();
 	self:Cashout();
 	self._player.char:DeleteBucket(FLAG);
 end
 
 function GoFishInstance:_fromBucket(npc, client)
-	local FLAG = GOFISH_FLAG .. npc:GetCleanName() .. client:AccountID();
+	local FLAG = GOFISH_FLAG .. npc:GetCleanName() .. client:CharacterID();
 	local data = client:GetBucket(FLAG);
 
 	-- Set new client
@@ -422,7 +422,7 @@ end
 
 function GoFishInstance:go(text, client)
 	-- Checks if passed in client matches current. If not, save other game and create new game
-	if (client and self._player.char:AccountID() ~= client:AccountID()) then
+	if (client and self._player.char:CharacterID() ~= client:CharacterID()) then
 		self:exit();
 		self:_fromBucket(self._npc.char, client);
 		return;

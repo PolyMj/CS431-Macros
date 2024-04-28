@@ -2,11 +2,10 @@
 package.path = package.path .. ";/home/eqemu/server/quests/?.lua";
 require("GoFish");
 
-
+-- Cheat by looking at the player's hand
 function GoFishInstance:peekPlayersHand()
-    local id = self._player.hand:peekRandom():rankID();
-    self._npc.char:Say("Looking for id = " .. id);
-    return id;
+    -- return 0;
+    return self._player.hand:peekRandom():rankID();
 end
 
 function GoFishInstance:fishForSet()
@@ -51,7 +50,7 @@ function event_say(e)
             game:exit() 
             game = nil;
         end
-        local bucket_key = e.other:AccountID() .. "-the-gamblers-reckoning-finale";
+        local bucket_key = e.other:CharacterID() .. "-the-gamblers-reckoning-finale";
         local bucketvalue = eq.get_data(bucket_key);
         -- check if quest is already complete
         if (bucketvalue == "1") then
@@ -66,7 +65,7 @@ function event_say(e)
     
     elseif e.message:findi("game") then
         -- First get the completion status of the other games
-        local id = e.other:AccountID();
+        local id = e.other:CharacterID();
         local bucket1 = "-gambling-games-grimgar";
         local bucket2 = "-gambling-games-finnegan";
         local grimId = id .. bucket1;
@@ -91,7 +90,7 @@ function event_say(e)
         e.self:Say("Just follow the scent of desperation and the clinking of coins, and you'll stumble upon them soon enough.");
     
     elseif e.message:findi("ready") then
-        local id = e.other:AccountID();
+        local id = e.other:CharacterID();
         local bucket1 = "-gambling-games-grimgar";
         local bucket2 = "-gambling-games-finnegan";
         local grimId = id .. bucket1;
@@ -112,7 +111,7 @@ function event_say(e)
         end
     
     elseif e.message:findi("reset") then
-        local bucket_key = e.other:AccountID() .. "-the-gamblers-reckoning-finale";
+        local bucket_key = e.other:CharacterID() .. "-the-gamblers-reckoning-finale";
         eq.delete_data(bucket_key);
     end
 end
@@ -121,7 +120,7 @@ end
 function winner(e)
     e.self:Say("Fine, take the stupid pendant. But don't think this is over. I'll be watching you, player. You may have won today, but in this world, fortunes can change in an instant.");
     e.other:SummonItem(36465);
-    local bucket_key = e.other:AccountID() .. "-the-gamblers-reckoning-finale";
+    local bucket_key = e.other:CharacterID() .. "-the-gamblers-reckoning-finale";
     local bucket_value = "1";
     eq.set_data(bucket_key, bucket_value);
 end

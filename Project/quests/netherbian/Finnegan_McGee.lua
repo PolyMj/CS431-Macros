@@ -58,7 +58,7 @@ function event_say(e)
         e.self:Say("Well, well, well, what do we have here? Another traveler passing through? You look like someone who enjoys a bit of excitement, am I right? Are you ready to play a [game] of chance?");
     
     elseif e.message:findi("game") then
-        local id = e.other:AccountID();
+        local id = e.other:CharacterID();
         local bucket = "-gambling-games-finnegan"
         local bucketkey = id .. bucket;
         if (eq.get_data(bucketkey) == "1") then
@@ -76,7 +76,7 @@ function event_say(e)
 
     elseif e.message:findi("reset") then
         -- resets data bucket for testing
-        local id = e.other:AccountID();
+        local id = e.other:CharacterID();
         local bucket = "-gambling-games-finnegan"
         local bucketkey = id .. bucket;
         eq.delete_data(bucketkey);
@@ -87,7 +87,7 @@ end
 
 function winner(e)
     -- get name of bucket
-    local id = e.other:AccountID();
+    local id = e.other:CharacterID();
     local bucket = "-gambling-games-finnegan"
     local bucketkey = id .. bucket;
     local value = "1";
