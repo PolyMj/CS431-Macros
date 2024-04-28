@@ -2,6 +2,8 @@ package.path = package.path .. ";/home/eqemu/server/quests/?.lua";
 require("Cards");
 
 GOFISH_FLAG = "-GoFish";
+WINNINGS_FLAG = "-GFWinnings";
+WAGERS_FLAG = "-GFWagers";
 
 math.randomseed(os.time())
 
@@ -78,8 +80,17 @@ function payClient(client, amount)
 end
 
 
+function addToBucket(client, FLAG, addend)
+	local data = tonumber(client:GetBucket(FLAG));
+	local data = data or 0;
+	local data = data + addend;
+	client:SetBucket(FLAG, tostring(data));
+end
+
+
 GoFishInstance = {
 	STATUS = {
+		UNSTARTED = -2;
 		FORFEIT = -1;
 		ONGOING = 0;
 		LOSE = 1;
@@ -130,7 +141,7 @@ function GoFishInstance.new(npc, client, required_payment, deck_count, inital_ca
 		npcFindSet = nil;
 	};
 
-	self.gameOverStatus = GoFishInstance.STATUS.ONGOING;
+	self.gameOverStatus = GoFishInstance.STATUS.UNSTARTED;
 
 	self.RETURNS = {
 		LOSE = 0;
@@ -145,10 +156,12 @@ function GoFishInstance.new(npc, client, required_payment, deck_count, inital_ca
 
 	self._STAGE = GoFishInstance._initializeGame;
 
-	-- Get data from a data bucket (if data exists and is valid)
-	self:_fromBucket(npc, client);
-
 	return self;
+end
+
+
+function GoFishInstance:getFlagSuffix()
+	return self._npc.char:GetCleanName() .. self._player.char:AccountID();
 end
 
 
@@ -178,19 +191,14 @@ function GoFishInstance:defaultNpcAsk()
 	return self._npc.hand:peekRandom():rankID();
 end
 
--- Load data from a bucket. If data not found or invalid, initialize to new game
-function GoFishInstance:_fromBucket(npc, client)
-	local FLAG = BLACKJACK_FLAG .. npc:GetName() .. client:AccountID();
-	local data = client:GetBucket(FLAG);
-
-	-- Incomplete
-end
-
-function GoFishInstance:_parseBucket(data)
-	-- Incomplete
-end
-
 function GoFishInstance:_initializeGame()
+	-- Try to initialize from a databucket first
+	self:_fromBucket(self._npc.char, self._player.char);
+	if (self.gameOverStatus == GoFishInstance.STATUS.ONGOING) then
+		self:_status();
+		return;
+	end
+	
 	-- Check / request payment
 	if (self._player.handin < self.required_payment) then
 		self._npc.char:Say(
@@ -220,6 +228,7 @@ function GoFishInstance:_initializeGame()
 
 	-- Set bet and reset player handin
 	self._player.bet = self._player.handin;
+	addToBucket(self._player.char, WAGERS_FLAG .. self:getFlagSuffix(), self._player.bet);
 	self._player.handin = 0;
 	self:_status();
 end
@@ -232,10 +241,15 @@ function GoFishInstance:displayGame()
 	-- Window type
 	dia_string = dia_string .. "wintype:1 ";
 
-	-- Bet
-	if (self._player.bet > 0) then
-		dia_string = dia_string .. "{gold} Bet is " .. self._player.bet .. "c ~ ";
+	-- Got game over --> display error dialogue
+	if (self.gameOverStatus == GoFishInstance.STATUS.ONGOING and #self._outText.errorDialogue > 0) then
+		dia_string = dia_string .. "{linebreak} {r}";
+		for i,v in pairs(self._outText.errorDialogue) do
+			dia_string = dia_string .. " {bullet} " .. v
+		end
+		dia_string = dia_string .. " ~ ";
 	end
+	self._outText.errorDialogue = {};
 
 	-- Deck
 	if (self.deck:count() > 0) then
@@ -306,16 +320,11 @@ function GoFishInstance:displayGame()
 			dia_string = dia_string .. "GAME OVER"; -- Should never happen, here just in case
 		end
 		dia_string = dia_string .. " ~ ";
-	-- Else display error dialogue
-	else
-		if (#self._outText.errorDialogue > 0) then
-			dia_string = dia_string .. "{linebreak} {r}";
-			for i,v in pairs(self._outText.errorDialogue) do
-				dia_string = dia_string .. " {bullet} " .. v
-			end
-			dia_string = dia_string .. " ~ ";
-		end
-		self._outText.errorDialogue = {};
+	end
+
+	-- Bet
+	if (self._player.bet > 0) then
+		dia_string = dia_string .. "{linebreak} {gold} Bet is " .. self._player.bet .. "c ~ ";
 	end
 	
 
@@ -358,7 +367,7 @@ function GoFishInstance:exit()
 end
 
 function GoFishInstance:_deleteBucket()
-	local FLAG = GOFISH_FLAG .. self._nps.char:GetCleanName() .. self._player.char:AccountID();
+	local FLAG = GOFISH_FLAG .. self._npc.char:GetCleanName() .. self._player.char:AccountID();
 	self:Cashout();
 	self._player.char:DeleteBucket(FLAG);
 end
@@ -369,6 +378,7 @@ function GoFishInstance:_fromBucket(npc, client)
 
 	-- If data bucket load was successful, play
 	if (self:_parseBucket(data)) then
+		self.gameOverStatus = GoFishInstance.STATUS.ONGOING;
 		self._STAGE = GoFishInstance._status;
 	-- Otherwise, new game
 	else
@@ -493,7 +503,7 @@ function GoFishInstance:_parseTurn(text)
 
 	-- If not a rank
 	if (rankID < 0 or rankID > Card.RANK_IDS.KING) then
-		table.insert(self._outText.errorDialogue, "Sorry, don't know what rank that is ID:" .. rankID);
+		table.insert(self._outText.errorDialogue, "Sorry, don't know what rank that is");
 		self:_turn();
 		return;
 	end
@@ -588,6 +598,13 @@ end
 -- Returns all due money to the player, both from winnings and remaining handin (if any)
 function GoFishInstance:Cashout()
 	payClient(self._player.char, self._player.handin + self._player.due);
+
+	addToBucket(
+		self._player.char, 
+		WINNINGS_FLAG .. self:getFlagSuffix(),
+		self._player.due
+	);
+
 	self._player.handin = 0;
 	self._player.due = 0;
 end

@@ -2,6 +2,8 @@ package.path = package.path .. ";/home/eqemu/server/quests/?.lua";
 require("Cards");
 
 BLACKJACK_FLAG = "-BlackJack";
+WINNINGS_FLAG = "-BJWinnings";
+WAGERS_FLAG = "-BJWagers";
 
 	-- Additions to Cards / Deck classes -- 
 --
@@ -17,7 +19,6 @@ function Card:value()
 		return 0;
 	end
 end
-
 
 function Deck:minValue()
 	local value = 0;
@@ -77,6 +78,14 @@ function payClient(client, amount)
 end
 
 
+function addToBucket(client, FLAG, addend)
+	local data = tonumber(client:GetBucket(FLAG));
+	local data = data or 0;
+	local data = data + addend;
+	client:SetBucket(FLAG, tostring(data));
+end
+
+
 	-- BLACKJACKINSTACE -- 
 --
 
@@ -103,6 +112,8 @@ function BlackjackInstance.new(npc, client, required_payment)
 		hands = {};
 		bets = {};
 		splitAce = false;
+		handsWon = 0;
+		handsLost = 0;
 	};
 
 	self._dealer = {
@@ -143,9 +154,24 @@ function BlackjackInstance.new(npc, client, required_payment)
 
 	self.dealerAI = BlackjackInstance.defaultDealerAI;
 
-	self:_fromBucket(npc, client)
+	self._STAGE = BlackjackInstance._initializeGame;
 
 	return self;
+end
+
+function BlackjackInstance:getFlagSuffix()
+	return self._dealer.char:GetCleanName() .. self._player.char:AccountID();
+end
+
+function BlackjackInstance:getWinnings(client)
+	client = client or self._player.char
+	local data = tonumber(client:GetBucket(WINNINGS_FLAG..self:getFlagSuffix())) or 0;
+	return data;
+end
+function BlackjackInstance:getWagers(client)
+	client = client or self._player.char
+	local data = tonumber(client:GetBucket(WAGERS_FLAG..self:getFlagSuffix())) or 0;
+	return data;
 end
 
 -- Adds amount_copper to the player's handin total
@@ -185,6 +211,14 @@ end
 function BlackjackInstance:addPlayerHand(hand, bet)
 	table.insert(self._player.hands, hand);
 	table.insert(self._player.bets, (bet or 0));
+
+	if (bet) then
+		addToBucket(
+			self._player.char, 
+			WAGERS_FLAG .. self:getFlagSuffix(),
+			bet
+		);
+	end
 end
 
 -- Main function run from quest NPCs
@@ -203,9 +237,12 @@ function BlackjackInstance:go(text, client)
 		return;
 	end
 
-	if (text and text == "Exit" and #self._player.hands > 0) then
-		self._dealer.char:Say("Game saved");
-		self:exit();
+	if (text and text == "Exit") then
+		-- Only save game if there is actually a game in progress
+		if (#self._player.hands > 0) then
+			self._dealer.char:Say("Game saved");
+			self:exit();
+		end
 		return;
 	end
 	self:_STAGE(text);
@@ -213,13 +250,16 @@ end
 
 function BlackjackInstance:exit()
 	self:Cashout();
-	local FLAG = BLACKJACK_FLAG .. self._dealer.char:GetCleanName() .. self._player.char:AccountID();
+	local FLAG = BLACKJACK_FLAG .. self:getFlagSuffix();
 
 	local data = "";
 
 	data = data .. self._dealer.hand:to64() .. " ";
 
-	data = data .. self.deck:to64();
+	data = data .. self.deck:to64() .. " ";
+
+	data = data .. self._player.handsWon .. " ";
+	data = data .. self._player.handsLost;
 
 	for i,hand in pairs(self._player.hands) do
 		data = data .. " " .. hand:to64();
@@ -232,7 +272,7 @@ function BlackjackInstance:exit()
 end
 
 function BlackjackInstance:_deleteBucket()
-	local FLAG = BLACKJACK_FLAG .. self._dealer.char:GetCleanName() .. self._player.char:AccountID();
+	local FLAG = BLACKJACK_FLAG .. self:getFlagSuffix();
 	self:Cashout();
 	self._player.char:DeleteBucket(FLAG);
 end
@@ -247,6 +287,7 @@ function BlackjackInstance:_fromBucket(npc, client)
 		self.gameInProgress = true;
 	-- Otherwise, new game
 	else
+		self._dealer.char:Say("No game data found, creating new game...");
 		self._STAGE = BlackjackInstance._initializeGame;
 	end
 
@@ -267,7 +308,12 @@ function BlackjackInstance:_parseBucket(data)
 	self._dealer.hand = Deck.from64(chunks[1]);
 	self.deck = Deck.from64(chunks[2]);
 
-	for i=2, #chunks do
+	self._player.handsWon = tonumber(chunks[3]);
+	self._player.handsLost = tonumber(chunks[4]);
+
+	self._player.hands = {};
+	self._player.bets = {};
+	for i=5, #chunks do
 		local sub_chunks = {};
 		for sc in chunks[i]:gmatch("[^_]+") do
 			table.insert(sub_chunks, sc);
@@ -288,6 +334,13 @@ end
 
 
 function BlackjackInstance:_initializeGame()
+	-- Try to initialize from a bucket first
+	self:_fromBucket(self._dealer.char, self._player.char);
+	if (self.gameInProgress) then
+		self:_status();
+		return;
+	end
+
 	if (self._player.handin < self.required_payment) then
 		self._dealer.char:Say(
 			"You'll need to pay before you play (" .. 
@@ -319,33 +372,46 @@ function BlackjackInstance:displayGame()
 	local dia_string = "{title: Blackjack with " .. self._dealer.char:GetCleanName() .. "} ";
 
 	-- DiaWinds really hate single custom buttons ig
-	dia_string = dia_string .. "{button_one: Exit} {button_two: Exit} ";
+	dia_string = dia_string .. "{button_one: Exit} {button_two: Forfeit} ";
 
 	-- Window type
 	dia_string = dia_string .. "wintype:1 ";
 
+	-- Game not over --> Display error dialogue
+	if (#self._player.hands > 0 and #self._outText.errorDialogue > 0) then
+		dia_string = dia_string .. "{linebreak} {r}"
+		for i,s in pairs(self._outText.errorDialogue) do
+			dia_string = dia_string .. "{bullet} " .. s .. " ";
+		end
+		dia_string = dia_string .. "~ ";
+	end
+	self._outText.errorDialogue = {};
+
 	-- Dealer's hand
 	dia_string = dia_string .. "{linebreak} {y} Dealer's hand: {bullet}" .. self._dealer:toStringHidden() .. "~ ";
 	
+	-- Hands won/lost
+	dia_string = dia_string .. "{linebreak} Hands won: " .. self._player.handsWon .. " || Hands lost: " .. self._player.handsLost .. " ";
+
 	-- Active hands
 	if (#self._player.hands > 0) then
 		dia_string = dia_string .. "{linebreak} {lb} Your hands: ";
 
 		for i,hand in pairs(self._player.hands) do
-			dia_string = dia_string .. "{bullet} " .. hand:toStringVal() .. " ";
-			dia_string = dia_string .. " with bet of " .. self._player.bets[i] .. "c ";
+			dia_string = dia_string .. " {linebreak} {in} {bullet} Val is " .. hand:optimalValue() .. 
+				", bet is " .. self._player.bets[i] .. "c - " .. hand:toString() .. " ";
 		end
 		dia_string = dia_string .. "~ ";
 	end
 
 	-- Finished hands
 	if (#self._outText.finishedHands > 0) then
-		dia_string = dia_string .. "{linebreak} {gray} Finished's hands: ";
+		dia_string = dia_string .. "{linebreak} {gray} Finished hands: ";
 
 		for i,fh in pairs(self._outText.finishedHands) do
-			dia_string = dia_string .. "{bullet} " .. fh .. " ";
+			dia_string = dia_string .. "{linebreak} {in} {bullet} " .. fh .. " ";
 		end
-		dia_string = dia_string .. "~ ";
+		dia_string = dia_string .. " ~ ";
 	end
 	self._outText.finishedHands = {};
 
@@ -360,15 +426,6 @@ function BlackjackInstance:displayGame()
 
 	if (#self._player.hands < 1) then
 		dia_string = dia_string .. "{linebreak} {r} GAME OVER";
-	else
-		if (#self._outText.errorDialogue > 0) then
-			dia_string = dia_string .. "{linebreak} {r}"
-			for i,s in pairs(self._outText.errorDialogue) do
-				dia_string = dia_string .. "{bullet} " .. s .. " ";
-			end
-			dia_string = dia_string .. "~ ";
-		end
-		self._outText.errorDialogue = {};
 	end
 
 	self._player.char:DialogueWindow(dia_string);
@@ -391,8 +448,10 @@ function BlackjackInstance:_status()
 		local value = hand:optimalValue();
 		if (hand:isBlackjack()) then
 			self:_finishHand(i, self.RETURNS.BLACKJACK, "Blackjack!");
+			self._player.handsWon = self._player.handsWon + 1;
 		elseif (value > 21) then
 			self:_finishHand(i, self.RETURNS.LOSE, "Busted!");
+			self._player.handsLost = self._player.handsLost + 1;
 		end
 	end
 
@@ -402,7 +461,7 @@ function BlackjackInstance:_status()
 		self.gameInProgress = false;
 		self:displayGame();
 		self:Cashout();
-		self._STAGE = BlackjackInstance._initializeGame;
+		self._STAGE = BlackjackInstance.displayGame;
 	end
 end
 
@@ -459,8 +518,8 @@ function BlackjackInstance:_parseTurn(text)
 	elseif (text == "Stand") then
 		self:_stand();
 	elseif (text == "Stand All") then
-		for index,hand in pairs(self._player.hands) do
-			self:_checkStand(index);
+		while (#self._player.hands > 0) do
+			self:_checkStand(1); -- Removes elements, so just use index 1 each time
 		end
 		self:displayGame();
 	else
@@ -605,13 +664,16 @@ function BlackjackInstance:_checkStand(hand_index)
 			self:_finishHand(hand_index, self.RETURNS.DRAW, "Tied with Blackjack!");
 		else
 			self:_finishHand(hand_index, self.RETURNS.BLACKJACK, "Won with Blackjack!");
+			self._player.handsWon = self._player.handsWon + 1;
 		end
 	elseif (hand:optimalValue() == self._dealer.hand:optimalValue()) then
 		self:_finishHand(hand_index, self.RETURNS.DRAW, "Tied with the dealer");
 	elseif (hand:optimalValue() < self._dealer.hand:optimalValue()) then
 		self:_finishHand(hand_index, self.RETURNS.LOSE, "Lost to the dealer");
+		self._player.handsLost = self._player.handsLost + 1;
 	else
 		self:_finishHand(hand_index, self.RETURNS.WIN, "Beat the dealer!");
+		self._player.handsWon = self._player.handsWon + 1;
 	end
 end
 
@@ -636,6 +698,13 @@ end
 -- Returns all due money to the player, both from winnings and remaining handin (if any)
 function BlackjackInstance:Cashout()
 	payClient(self._player.char, self._player.handin + self._player.due);
+
+	addToBucket(
+		self._player.char, 
+		WINNINGS_FLAG .. self:getFlagSuffix(),
+		self._player.due
+	);
+
 	self._player.handin = 0;
 	self._player.due = 0;
 end
