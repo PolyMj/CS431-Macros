@@ -166,7 +166,12 @@ end
 
 
 -- Adds amount_copper to the player's handin total
-function GoFishInstance:handin(amount_copper)
+function GoFishInstance:handin(amount_copper, client)
+	if (client and self._player.char:AccountID() ~= client:AccountID()) then
+		self:exit();
+		self:_fromBucket(self._dealer.char, client);
+	end
+
 	if (amount_copper > 0) then
 		self._player.handin = self._player.handin + (amount_copper or 0);
 	end
@@ -375,6 +380,9 @@ end
 function GoFishInstance:_fromBucket(npc, client)
 	local FLAG = GOFISH_FLAG .. npc:GetCleanName() .. client:AccountID();
 	local data = client:GetBucket(FLAG);
+
+	-- Set new client
+	self._player.char = client;
 
 	-- If data bucket load was successful, play
 	if (self:_parseBucket(data)) then

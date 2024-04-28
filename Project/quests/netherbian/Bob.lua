@@ -34,10 +34,26 @@ function event_say(e)
 	if (game) then
 		game:go(e.message, client)
 	else
-		game = GoFishInstance.new(npc, client, 10);
+		game = BlackjackInstance.new(npc, client, 10);
 		if (game) then
 			game:go(nil, client);
 		end
 	end
+end
 
+
+function event_trade(e)
+	local trade = e.trade;
+	npc = e.self;
+	client = e.other;
+
+	local money = trade.copper + 10*(trade.silver + 10*(trade.gold + 10*(trade.platinum)));
+	if (money) then
+		if (game) then
+			game:handin(money);
+			game:go();
+		else
+			client:AddMoneyToPP(trade.copper, trade.silver, trade.gold, trade.platinum, true);
+		end
+	end
 end
