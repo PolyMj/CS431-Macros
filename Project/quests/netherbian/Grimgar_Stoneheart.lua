@@ -1,4 +1,4 @@
--- Npc for playing ""
+-- Npc for playing "Blackjack"
 package.path = package.path .. ";/home/eqemu/server/quests/?.lua";
 require("Blackjack");
 

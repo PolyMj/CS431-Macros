@@ -205,6 +205,7 @@ function GoFishInstance:_initializeGame()
 
 	-- Initialize deck
 	self.deck = Deck.new(self.deck_count, 1);
+	self.deck:shuffle();
 
 	-- Initialize hands
 	self._npc.hand = Deck.new(0,0);
