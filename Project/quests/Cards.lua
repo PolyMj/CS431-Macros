@@ -146,6 +146,11 @@ end
 
 -- Draws and returns a random card, removing it from the deck
 function Deck:drawRandom()
+	if (self:count() == 1) then
+		return self:drawTop();
+	elseif (self:count() == 0) then
+		return nil;
+	end
 	local index = math.random(1,#self.cards);
 	local card = self.cards[index];
 	table.remove(self.cards, index);
@@ -154,6 +159,11 @@ end
 
 -- Returns a random card without removing it
 function Deck:peekRandom()
+	if (self:count() == 1) then
+		return self.cards[1];
+	elseif (self:count() == 0) then
+		return nil;
+	end
 	local index = math.random(1,#self.cards);
 	local card = self.cards[index];
 	return card;
@@ -192,6 +202,38 @@ end
 -- Add a card to the top of the deck
 function Deck:addTop(card)
 	table.insert(self.cards, card);
+end
+
+-- Assumes the deck is sorted by card.id and adds it to the correct spot
+function Deck:addSort(card)
+	if (self:count() <= 0) then
+		self:addTop(card);
+		return;
+	end
+
+	for i,c in pairs(self.cards) do
+		if (card.id <= c.id) then
+			table.insert(self.cards, i, card);
+			return;
+		end
+	end
+	-- If not added, add to end
+	self:addTop(card);
+end
+
+function Deck:sort()
+	table.sort(self.cards, function(c1, c2) return c1.id < c2.id end);
+end
+
+-- Adds a deck to another deck (all cards end up in self, does not clear other deck)
+function Deck:addDeck(deck)
+	for i,card in pairs(deck.cards) do
+		self:addTop(card);
+	end
+end
+
+function Deck:clear()
+	self.cards = {};
 end
 
 function Deck:count()

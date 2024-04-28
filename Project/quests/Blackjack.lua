@@ -163,6 +163,7 @@ function BlackjackInstance:forceHandin(amount_copper)
 	end
 end
 
+-- Removes a number of cards from self.deck and adds them to self._dealer.hand
 function BlackjackInstance.defaultDealerAI(self)
 	self._dealer.hand = Deck.new(0,0);
 
@@ -174,6 +175,8 @@ function BlackjackInstance:getDealerHand()
 	self:dealerAI();
 
 	if (self._dealer.hand:optimalValue() > 21 or self._dealer.hand:count() < 1) then
+		self.deck:addDeck(self._dealer.hand);
+		self._dealer.hand:clear();
 		self:defaultDealerAI();
 	end
 end

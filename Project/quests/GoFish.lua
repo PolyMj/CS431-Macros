@@ -14,7 +14,7 @@ function Deck:fishAny(otherDeck, rankID)
 		if (otherDeck.cards[i]:rankID() == rankID) then
 			local card = otherDeck.cards[i];
 			table.remove(otherDeck.cards, i);
-			self:addTop(card);
+			self:addSort(card);
 			count = count + 1;
 		else
 			i = i + 1;
@@ -33,19 +33,19 @@ function Deck:hasAny(rankID)
 end
 
 function Deck:findRemoveSet(rankID)
-	local unfound = {1, 2, 3, 4};
+	local unfound = {0, 1, 2, 3};
 	local base_id = rankID * 4;
 	local found_indices = {};
 	for ci,card in pairs(self.cards) do
 		-- If the rank id matches
 		if (card:rankID() == rankID) then
-			local ui = 1;
 			-- Check if it matches an unfound suite
+			local ui = 1;
 			while (ui <= #unfound) do
 				local id = unfound[ui] + base_id;
 				if (id == card.id) then
 					table.insert(found_indices, ci);
-					table.remove(unfound(ui))
+					table.remove(unfound, ui)
 				else
 					ui = ui + 1;
 				end
@@ -78,7 +78,14 @@ function payClient(client, amount)
 end
 
 
-GoFishInstance = {};
+GoFishInstance = {
+	STATUS = {
+		ONGOING = 0;
+		LOSE = 1;
+		DRAW = 2;
+		WIN = 3;
+	};
+};
 GoFishInstance.__index = GoFishInstance;
 function GoFishInstance.new(npc, client, required_payment, deck_count, inital_card_count)
 	self = setmetatable({}, GoFishInstance);
@@ -120,7 +127,7 @@ function GoFishInstance.new(npc, client, required_payment, deck_count, inital_ca
 		npcFindSet = nil;
 	};
 
-	self.gameOverStatus = nil; -- nil ==> Game ongoing
+	self.gameOverStatus = GoFishInstance.STATUS.ONGOING;
 
 	self.RETURNS = {
 		LOSE = 0;
@@ -188,6 +195,7 @@ function GoFishInstance:_initializeGame()
 		self._STAGE = GoFishInstance._initializeGame;
 		return;
 	end
+	self.gameOverStatus = GoFishInstance.STATUS.ONGOING;
 
 	-- Initialize deck
 	self.deck = Deck.new(self.deck_count, 1);
@@ -232,25 +240,25 @@ end
 function GoFishInstance:_status()
 	-- Check win/lose/draw
 	if (self._player.hand:count() <= 0) then
-		self._outText.gameOverStatus = "YOU LOSE";
+		self._outText.gameOverStatus = GoFishInstance.STATUS.LOSE;
 		payClient(self._player.char, math.floor(self._player.bet * self.RETURNS.LOSE))
 	elseif (self._npc.hand:count() <= 0) then
-		self._outText.gameOverStatus = "YOU WIN!";
+		self._outText.gameOverStatus = GoFishInstance.STATUS.WIN;
 		payClient(self._player.char, math.floor(self._player.bet * self.RETURNS.WIN))
 	elseif (self.deck:count() <= 0) then
 		if (self._player.hand:count() < self._npc.hand:count()) then
-			self._outText.gameOverStatus = "YOU LOSE";
+			self._outText.gameOverStatus = GoFishInstance.STATUS.LOSE;
 			payClient(self._player.char, math.floor(self._player.bet * self.RETURNS.LOSE))
 		elseif (self._player.hand:count() == self._npc.hand:count()) then
-			self._outText.gameOverStatus = "It's a draw!";
+			self._outText.gameOverStatus = GoFishInstance.STATUS.DRAW;
 			payClient(self._player.char, math.floor(self._player.bet * self.RETURNS.DRAW))
 		else
-			self._outText.gameOverStatus = "YOU WIN!";
+			self._outText.gameOverStatus = GoFishInstance.STATUS.WIN;
 			payClient(self._player.char, math.floor(self._player.bet * self.RETURNS.WIN))
 		end
 	end
 	
-	if (not self.gameOverStatus) then
+	if (self.gameOverStatus == GoFishInstance.STATUS.ONGOING) then
 		self:_turn();
 	else
 		self:displayGame();
@@ -280,7 +288,7 @@ function GoFishInstance:displayGame()
 	-- NPC's hand
 	if (self.deck:count() > 0) then
 		dia_string = dia_string .. "{linebreak} {y} " .. self._npc.char:GetCleanName() .. " has around " ..
-			(math.random(1, self._npc.hand:count()) + math.random(1, self._npc.hand:count())) ..
+			(math.random(1, self.deck:count()) + math.random(1, self.deck:count())) ..
 			" cards ~ ";
 	else
 		dia_string = dia_string .. "{linebreak} {y} " .. self._npc.char:GetCleanName() .. "'s hand is empty ~ ";
@@ -302,15 +310,37 @@ function GoFishInstance:displayGame()
 		dia_string = dia_string .. "{linebreak} {g} " .. self._outText.playerAskResult .. " ~ ";
 	end
 	self._outText.playerAskResult = nil;
+	-- If player found a set
+	if (self._outText.playerFindSet) then
+		dia_string = dia_string .. "{linebreak} {g} " .. self._outText.playerFindSet .. " ~ ";
+	end
+	self._outText.playerFindSet = nil;
+
 	-- Result of npc's ask
 	if (self._outText.npcAskResult) then
 		dia_string = dia_string .. "{linebreak} {r} " .. self._outText.npcAskResult .. " ~ ";
 	end
 	self._outText.npcAskResult = nil;
+	-- If npc found a set
+	if (self._outText.npcFindSet) then
+		dia_string = dia_string .. "{linebreak} {r} " .. self._outText.npcFindSet .. " ~ ";
+	end
+	self._outText.npcFindSet = nil;
 
 	-- If game over
-	if (self.gameOverStatus) then
-		dia_string = dia_string .. "{linebreak} {r} " .. (self.gameOverStatus) .. " ";
+	if (self.gameOverStatus ~= GoFishInstance.STATUS.ONGOING) then
+		dia_string = dia_string .. "{linebreak} {r} ";
+		-- Get exact game conclusion
+		if (self.gameOverStatus == GoFishInstance.STATUS.LOSE) then
+			dia_string = dia_string .. "You lose!";
+		elseif (self.gameOverStatus == GoFishInstance.STATUS.DRAW) then
+			dia_string = dia_string .. "It's a draw!";
+		elseif (self.gameOverStatus == GoFishInstance.STATUS.WIN) then
+			dia_string = dia_string .. "You win!";
+		else
+			dia_string = dia_string .. "GAME OVER"; -- Should never happen, here just in case
+		end
+		dia_string = " ~ ";
 	-- Else display error dialogue
 	else
 		if (#self._outText.errorDialogue > 0) then
@@ -389,7 +419,7 @@ function GoFishInstance:_parseTurn(text)
 			self._outText.playerFindSet = "You found all the " .. Card.RANK_FULL_NAMES[rankID+1] .. "s! ";
 		end
 	else
-		self._outText.playerAskResult = "You didn't find any " .. Card.RANK_FULL_NAMES[rankID+1] .. "... Go fish! ";
+		self._outText.playerAskResult = "You didn't find any " .. Card.RANK_FULL_NAMES[rankID+1] .. "s... Go fish! ";
 		self:_playerGoFish();
 	end
 
@@ -419,7 +449,7 @@ function GoFishInstance:_npcsTurn()
 			self._outText.npcFindSet = self._npc.char:GetCleanName() .. " found all the " .. Card.RANK_FULL_NAMES[rankID+1] .. "s! ";
 		end
 	else
-		self._outText.npcAskResult = self._npc.char:GetCleanName() .. " didn't find any " .. Card.RANK_FULL_NAMES[rankID+1] .. "... Go fish! ";
+		self._outText.npcAskResult = self._npc.char:GetCleanName() .. " didn't find any " .. Card.RANK_FULL_NAMES[rankID+1] .. "s... Go fish! ";
 		self:_npcGoFish();
 	end
 
@@ -431,14 +461,24 @@ function GoFishInstance:_npcGoFish()
 	if (not card) then
 		card = self:defaultFish();
 	end
-	self._npc.hand:addTop(card);
+	self._npc.hand:addSort(card);
+
+	local rankID = card:rankID();
+	if (self._npc.hand:findRemoveSet(rankID)) then
+		self._outText.npcFindSet = self._npc.char:GetCleanName() .. " found all the " .. Card.RANK_FULL_NAMES[rankID+1] .. "s! ";
+	end
 end
 function GoFishInstance:_playerGoFish()
 	local card = self:playerFish();
 	if (not card) then
 		card = self:defaultFish();
 	end
-	self._player.hand:addTop(card);
+	self._player.hand:addSort(card);
+
+	local rankID = card:rankID();
+	if (self._player.hand:findRemoveSet(rankID)) then
+		self._outText.playerFindSet = "You found all the " .. Card.RANK_FULL_NAMES[rankID+1] .. "s! ";
+	end
 end
 
 
