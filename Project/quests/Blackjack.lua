@@ -139,8 +139,9 @@ function BlackjackInstance.new(npc, client, required_payment)
 
 	self._hand_selection = 0;
 
-	self.dealerAI = BlackjackInstance.defaultDealerAI;
+	self.gameInProgress = false;
 
+	self.dealerAI = BlackjackInstance.defaultDealerAI;
 
 	self:_fromBucket(npc, client)
 
@@ -195,6 +196,13 @@ function BlackjackInstance:go(text, client)
 		return;
 	end
 
+	if (text and text == "Forfeit") then
+		self._STAGE = BlackjackInstance._initializeGame;
+		self:_deleteBucket();
+		self.gameInProgress = false;
+		return;
+	end
+
 	if (text and text == "Exit" and #self._player.hands > 0) then
 		self._dealer.char:Say("Game saved");
 		self:exit();
@@ -220,6 +228,13 @@ function BlackjackInstance:exit()
 
 	self._player.char:SetBucket(FLAG, data);
 	self._STAGE = BlackjackInstance._initializeGame;
+	self.gameInProgress = false;
+end
+
+function BlackjackInstance:_deleteBucket()
+	local FLAG = BLACKJACK_FLAG .. self._dealer.char:GetCleanName() .. self._player.char:AccountID();
+	self:Cashout();
+	self._player.char:DeleteBucket(FLAG);
 end
 
 function BlackjackInstance:_fromBucket(npc, client)
@@ -229,6 +244,7 @@ function BlackjackInstance:_fromBucket(npc, client)
 	-- If data bucket load was successful, play
 	if (self:_parseBucket(data)) then
 		self._STAGE = BlackjackInstance._turn;
+		self.gameInProgress = true;
 	-- Otherwise, new game
 	else
 		self._STAGE = BlackjackInstance._initializeGame;
@@ -294,12 +310,8 @@ function BlackjackInstance:_initializeGame()
 	player_hand:addTop(self.deck:drawRandom());
 	self:addPlayerHand(player_hand, self._player.handin);
 	self._player.handin = 0;
+	self.gameInProgress = true;
 	self:_status();
-end
-
-
-function BlackjackInstance:gamestateString()
-
 end
 
 
@@ -387,6 +399,7 @@ function BlackjackInstance:_status()
 	if (#self._player.hands > 0) then
 		self:_turn();
 	else
+		self.gameInProgress = false;
 		self:displayGame();
 		self:Cashout();
 		self._STAGE = BlackjackInstance._initializeGame;

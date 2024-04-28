@@ -357,6 +357,12 @@ function GoFishInstance:exit()
 	self._STAGE = GoFishInstance._initializeGame;
 end
 
+function GoFishInstance:_deleteBucket()
+	local FLAG = GOFISH_FLAG .. self._nps.char:GetCleanName() .. self._player.char:AccountID();
+	self:Cashout();
+	self._player.char:DeleteBucket(FLAG);
+end
+
 function GoFishInstance:_fromBucket(npc, client)
 	local FLAG = GOFISH_FLAG .. npc:GetCleanName() .. client:AccountID();
 	local data = client:GetBucket(FLAG);
@@ -420,6 +426,7 @@ function GoFishInstance:go(text, client)
 
 	if (text and text == "Forfeit") then
 		self._STAGE = GoFishInstance._initializeGame;
+		self:_deleteBucket();
 		self.gameOverStatus = GoFishInstance.STATUS.FORFEIT;
 		return;
 	end
