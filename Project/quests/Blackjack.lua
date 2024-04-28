@@ -363,6 +363,7 @@ function BlackjackInstance:_initializeGame(text)
 	self.requesting_payment = false;
 
 	self.deck = Deck.new(1,0);
+	self.deck:shuffle();
 	self:getDealerHand();
 
 	-- Draw two random cards for the player

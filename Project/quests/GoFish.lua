@@ -65,21 +65,6 @@ function Deck:findRemoveSet(rankID)
 end
 
 
-function payClient(client, amount)
-	if (amount > 0) then
-		local copp = amount % 10;
-		amount = math.floor(amount / 10);
-		local silv = amount % 10;
-		amount = math.floor(amount / 10);
-		local gold = amount % 10;
-		amount = math.floor(amount / 10);
-		local play = amount % 10;
-		
-		client:AddMoneyToPP(copp, silv, gold, play, true);
-	end
-end
-
-
 function addToBucket(client, FLAG, addend)
 	local data = tonumber(client:GetBucket(FLAG));
 	local data = data or 0;
@@ -605,7 +590,7 @@ end
 
 -- Returns all due money to the player, both from winnings and remaining handin (if any)
 function GoFishInstance:Cashout()
-	payClient(self._player.char, self._player.handin + self._player.due);
+	local amount = self._player.handin + self._player.due;
 
 	addToBucket(
 		self._player.char, 
@@ -615,4 +600,16 @@ function GoFishInstance:Cashout()
 
 	self._player.handin = 0;
 	self._player.due = 0;
+
+	if (amount > 0) then
+		local copp = amount % 10;
+		amount = math.floor(amount / 10);
+		local silv = amount % 10;
+		amount = math.floor(amount / 10);
+		local gold = amount % 10;
+		amount = math.floor(amount / 10);
+		local plat = amount;
+		
+		self._player.char:AddMoneyToPP(copp, silv, gold, plat, true);
+	end
 end

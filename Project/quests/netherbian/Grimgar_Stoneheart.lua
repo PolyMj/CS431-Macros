@@ -9,7 +9,7 @@ function BlackjackInstance:hiddenFace()
     self._dealer.hand:addTop(self.deck:drawRandom());
 
     for i,card in pairs(self.deck.cards) do
-        if (card:rankID() == 2) then
+        if (card:isFace()) then
             self._dealer.hand:addTop(card);
             table.remove(self.deck.cards, i);
             return;
@@ -17,6 +17,7 @@ function BlackjackInstance:hiddenFace()
     end
     -- If no ace found, get another random card
     self._dealer.hand:addTop(self.deck:drawRandom());
+    self._dealer.char:Say("hiddenFace");
 end
 
 
@@ -65,6 +66,7 @@ function event_say(e)
     elseif e.message:findi("play") then
         game = BlackjackInstance.new(npc, client, 10000); -- 10 plat requirement
         if (game) then
+            game.dealerAI = BlackjackInstance.hiddenFace;
             game:go(nil, client);
         end
 
