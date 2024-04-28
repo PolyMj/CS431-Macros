@@ -18,7 +18,7 @@ function BlackjackInstance:bestOfThree()
         
         -- Add the best card from the selection of 3
         if (best_card) then
-            self.dealer.hand:addTop(best_card);
+            self._dealer.hand:addTop(best_card);
             table.remove(self.deck.cards, best_card_index);
         else
             -- Get random card
@@ -68,7 +68,7 @@ function event_say(e)
         end
     
     elseif e.message:findi("play") then
-        game = BlackjackInstance.new(npc, client, 10000); -- 10 plat requirement
+        game = BlackjackInstance.new(npc, client, 2000); -- 2 plat requirement
         if (game) then
             game.dealerAI = BlackjackInstance.bestOfThree;
             game:go(nil, client);

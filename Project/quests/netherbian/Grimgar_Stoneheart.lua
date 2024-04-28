@@ -15,9 +15,8 @@ function BlackjackInstance:hiddenFace()
             return;
         end
     end
-    -- If no ace found, get another random card
+    -- If no face found, get another random card
     self._dealer.hand:addTop(self.deck:drawRandom());
-    self._dealer.char:Say("hiddenFace");
 end
 
 

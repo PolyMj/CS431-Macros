@@ -1,24 +1,25 @@
 -- 'Final boss' Npc for playing "Go Fish"
 package.path = package.path .. ";/home/eqemu/server/quests/?.lua";
-require("Blackjack");
+require("GoFish");
 
 
 function GoFishInstance:peekPlayersHand()
-    return self._player.hand:peekRandom():rankID();
+    local id = self._player.hand:peekRandom():rankID();
+    self._npc.char:Say("Looking for id = " .. id);
+    return id;
 end
 
 function GoFishInstance:fishForSet()
     for i,ncard in pairs(self._npc.hand.cards) do
-        for k,dcard in pairs(self.deck) do
+        for k,dcard in pairs(self.deck.cards) do
             if (dcard:rankID() == ncard:rankID()) then
                 local card = dcard;
-                table.remove(self.deck, k);
-                return card;
+                if (self.deck:removeIndex(k)) then
+                    return card;
+                end
             end
         end
     end
-
-    return self.deck:drawRandom();
 end
 
 
@@ -41,6 +42,7 @@ function event_say(e)
             draw(e);
             game = nil;
         end
+        return;
     end
 
 
@@ -96,8 +98,8 @@ function event_say(e)
         local grimvalue = eq.get_data(grimId);
         local finnId = id .. bucket2;
         local finnvalue = eq.get_data(finnId);
-        -- Just making sure the player didn't walk up and say "ready" for some strange reason
-        if (grimvalue == "1" and finnvalue == "1") then
+        -- Just making sure in case the player just walked up and said "ready" for some strange reason
+        if not (grimvalue == "1" and finnvalue == "1") then
             e.self:Say("You are not ready you fool, leave!");
             return;
         end

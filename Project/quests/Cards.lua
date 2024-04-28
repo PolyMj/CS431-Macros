@@ -171,6 +171,26 @@ function Deck:drawTop()
 	return card;
 end
 
+-- Removes a matching card from the deck
+function Deck:removeCard(card)
+	for i,c in pairs(self.cards) do
+		if (c.id == card.id) then
+			table.remove(self.cards,i);
+			return true;
+		end
+	end
+	return false;
+end
+
+-- Removes the card at the given index
+function Deck:removeIndex(index)
+	if (0 <= index or index > #self.cards) then
+		return false
+	end
+
+	table.remove(self.cards, index);
+end
+
 -- Returns a random card without removing it
 function Deck:peekTop()
 	return self.cards[#self.cards];

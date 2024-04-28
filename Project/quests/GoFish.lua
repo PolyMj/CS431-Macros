@@ -376,7 +376,7 @@ function GoFishInstance:_fromBucket(npc, client)
 		self._STAGE = GoFishInstance._status;
 	-- Otherwise, new game
 	else
-		npc:Say("No valid data found, initializing new game...");
+		npc:Say("Initializing new game...");
 		self._STAGE = GoFishInstance._initializeGame;
 	end
 
@@ -393,7 +393,7 @@ function GoFishInstance:_parseBucket(data)
 		table.insert(chunks, chunk);
 	end
 	if (#chunks ~= 6) then
-		self._npc.char:Say("Incorrect number of data chunks");
+		self._npc.char:Say("Invalid game data: Incorrect number of data chunks");
 		return false;
 	end
 
@@ -412,7 +412,7 @@ function GoFishInstance:_parseBucket(data)
 	if (self._player.bet and self._player.hand and self._npc.hand and self._player.foundSets and self._npc.foundSets and self.deck) then
 		return true;
 	else
-		self._npc.char:Say("Data couldn't be initialized");
+		self._npc.char:Say("Invalid game data: Data couldn't be initialized");
 		return false
 	end
 end
@@ -532,15 +532,15 @@ end
 
 
 function GoFishInstance:_npcsTurn()
-	local rankID = self:npcAsk();
-
-	if (self._npc.hand:count() <= 0) then
-		-- uh oh
-		self:_status(); -- This should fix it? In theory this won't ever be needed anyways
+	-- Check if game is over
+	if (self._npc.hand:count() <= 0 or self._player.hand:count() <= 0 or self.deck:count() <= 0) then
+		self:_status();
 	end
 
+	local rankID = self:npcAsk();
+
 	-- Find next valid rankID (if the current one isn't valid)
-	local tries = 100;
+	local tries = #Card.RANKS;
 	while (not self._npc.hand:hasAny(rankID) and tries > 0) do
 		rankID = (rankID + 1) % #Card.RANKS;
 		tries = tries - 1;
