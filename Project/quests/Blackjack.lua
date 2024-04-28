@@ -203,7 +203,7 @@ function BlackjackInstance:getDealerHand()
 	);
 	
 	if not success and self.ENABLE_DEBUG_AI then
-		self._dealer.char:Say("ERROR: " .. tostring(result));
+		self._dealer.char:Say("ERROR in user-defined AI function: " .. tostring(result));
 	end
 
 	if (not success or self._dealer.hand:optimalValue() > 21 or self._dealer.hand:count() < 1) then

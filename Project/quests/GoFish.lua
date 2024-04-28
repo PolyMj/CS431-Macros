@@ -545,7 +545,7 @@ function GoFishInstance:_npcsTurn()
 	
 	if not success or (type(rankID) ~= "number") then
 		if self.ENABLE_DEBUG_AI then
-			self._npc.char:Say("ERROR: " .. tostring(rankID));
+			self._npc.char:Say("ERROR in user-defined AI function: " .. tostring(rankID));
 		end
 		rankID = self:defaultNpcAsk();
 	end
@@ -581,7 +581,7 @@ function GoFishInstance:_npcGoFish()
 	if not success then
 		card = self:defaultFish();
 		if self.ENABLE_DEBUG_AI then
-			self._npc.char:Say("ERROR: " .. tostring(card));
+			self._npc.char:Say("ERROR in user-defined AI function: " .. tostring(card));
 		end
 	end
 	if (not card) then
@@ -604,7 +604,7 @@ function GoFishInstance:_playerGoFish()
 	if not success then
 		card = self:defaultFish();
 		if self.ENABLE_DEBUG_AI then
-			self._npc.char:Say("ERROR: " .. tostring(card));
+			self._npc.char:Say("ERROR in user-defined AI function: " .. tostring(card));
 		end
 	end
 	if (not card) then
