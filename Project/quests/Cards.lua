@@ -81,10 +81,12 @@ function Card:isNumber()
 	return (Card.RANK_IDS.TWO <= rank or rank <= Card.RANK_IDS.TEN);
 end
 
+-- Converts to a base64 character
 function Card:to64()
 	return tob64(self.id);
 end
 
+-- Converts from a base64 character
 function Card.from64(base_64_char)
 	return Card.new(fromb64(base_64_char));
 end
@@ -218,6 +220,7 @@ function Deck:addSort(card)
 	self:addTop(card);
 end
 
+-- Sorts the deck by ID (rank then suite)
 function Deck:sort()
 	table.sort(self.cards, function(c1, c2) return c1.id < c2.id end);
 end
@@ -229,10 +232,12 @@ function Deck:addDeck(deck)
 	end
 end
 
+-- Clears the deck
 function Deck:clear()
 	self.cards = {};
 end
 
+-- Returns number of cards
 function Deck:count()
 	return #self.cards;
 end
@@ -247,6 +252,7 @@ function Deck:toString()
 	return string .. "}";
 end
 
+-- Converts to a base64 string
 function Deck:to64()
 	local str = "";
 	for i,c in pairs(self.cards) do
@@ -255,6 +261,7 @@ function Deck:to64()
 	return str;
 end
 
+-- Converts from a base64 string
 function Deck.from64(base_64_string)
 	local self = Deck.new(0,0);
 	for char in base_64_string:gmatch(".") do

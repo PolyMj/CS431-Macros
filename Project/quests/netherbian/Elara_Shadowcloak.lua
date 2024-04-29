@@ -28,7 +28,7 @@ function event_say(e)
     local client = e.other;
 
     -- If a game is ongoing, pass all messages to game:go()
-    if (game) then
+    if (game and game:isSamePlayer(client)) then
         game:go(e.message);
 
         if (game.status == GoFishInstance.STATUS.WIN) then
@@ -102,8 +102,9 @@ function event_say(e)
             e.self:Say("You are not ready you fool, leave!");
             return;
         end
-
-        game = GoFishInstance.new(npc, client, 10000); -- 10 plat requirement
+        if (not game) then
+            game = GoFishInstance.new(npc, client, 10000); -- 10 plat requirement
+        end
         if (game) then
             game.npcFish = GoFishInstance.fishForSet; -- Try to add to npc's sets
             game.npcAsk = GoFishInstance.peekPlayersHand; -- Try to ask for card in player's hand

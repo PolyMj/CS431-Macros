@@ -25,6 +25,7 @@ function Deck:fishAny(otherDeck, rankID)
 	return count;
 end
 
+-- Checks if the deck has any of a certain rank
 function Deck:hasAny(rankID)
 	for i,card in pairs(self.cards) do
 		if (card:rankID() == rankID) then
@@ -34,6 +35,7 @@ function Deck:hasAny(rankID)
 	return false;
 end
 
+-- Finds and removes any set that share the given rankID
 function Deck:findRemoveSet(rankID)
 	local unfound = {0, 1, 2, 3};
 	local base_id = rankID * 4;
@@ -64,7 +66,7 @@ function Deck:findRemoveSet(rankID)
 	return false;
 end
 
-
+-- Adds a number to the number stored in a bucket
 function addToBucket(client, FLAG, addend)
 	local data = tonumber(client:GetBucket(FLAG));
 	local data = data or 0;
@@ -146,7 +148,12 @@ function GoFishInstance.new(npc, client, required_payment, deck_count, inital_ca
 	return self;
 end
 
+-- Compares the current game's player to the client passed in
+function GoFishInstance:isSamePlayer(client)
+	return (client:CharacterID() == self._player.char:CharacterID());
+end
 
+-- Generates a flag suffix using the NPC's name and the player's ID
 function GoFishInstance:getFlagSuffix()
 	return self._npc.char:GetCleanName() .. self._player.char:CharacterID();
 end
@@ -183,6 +190,8 @@ function GoFishInstance:defaultNpcAsk()
 	return self._npc.hand:peekRandom():rankID();
 end
 
+
+-- Initialize a new game
 function GoFishInstance:_initializeGame()
 	-- Try to initialize from a databucket first
 	self:_fromBucket(self._npc.char, self._player.char);
@@ -226,6 +235,7 @@ function GoFishInstance:_initializeGame()
 	self:_status();
 end
 
+-- Displays current game state
 function GoFishInstance:displayGame()
 	local dia_string = "{title: Go Fish with " .. self._npc.char:GetCleanName() .. "} ";
 
@@ -335,6 +345,7 @@ function GoFishInstance:displayGame()
 	self._outText.optionsPrompt = "";
 end
 
+-- Exits and saves the game (if the game is still ongoing)
 function GoFishInstance:exit()
 	self:Cashout();
 	local FLAG = GOFISH_FLAG .. self._npc.char:GetCleanName() .. self._player.char:CharacterID();
@@ -359,12 +370,14 @@ function GoFishInstance:exit()
 	self._STAGE = GoFishInstance._initializeGame;
 end
 
+-- Deletes save data
 function GoFishInstance:_deleteBucket()
 	local FLAG = GOFISH_FLAG .. self._npc.char:GetCleanName() .. self._player.char:CharacterID();
 	self:Cashout();
 	self._player.char:DeleteBucket(FLAG);
 end
 
+-- Tries to load save data from a bucket. Defaults to new game
 function GoFishInstance:_fromBucket(npc, client)
 	local FLAG = GOFISH_FLAG .. npc:GetCleanName() .. client:CharacterID();
 	local data = client:GetBucket(FLAG);
@@ -385,6 +398,7 @@ function GoFishInstance:_fromBucket(npc, client)
 	client:DeleteBucket(FLAG);
 end
 
+-- Parses game save data from buckets
 function GoFishInstance:_parseBucket(data)
 	if (#data < 5) then return false end
 
@@ -419,9 +433,10 @@ function GoFishInstance:_parseBucket(data)
 	end
 end
 
+	-- Gameplay --
 
--- Gameplay
 
+-- Main function run from quest NPCs
 function GoFishInstance:go(text, client)
 	-- Checks if passed in client matches current. If not, save other game and create new game
 	if (client and self._player.char:CharacterID() ~= client:CharacterID()) then
@@ -446,7 +461,7 @@ function GoFishInstance:go(text, client)
 	self:_STAGE(text);
 end
 
-
+-- Checks the status of the game and displays it
 function GoFishInstance:_status()
 	-- Check win/lose/draw
 	if (self._player.hand:count() <= 0) or (self._npc.hand:count() <= 0) or (self.deck:count() <= 0) then
@@ -468,7 +483,7 @@ function GoFishInstance:_status()
 	end
 end
 
-
+-- Start a player's turn, prompting them to select their move
 function GoFishInstance:_turn()
 	-- Find all unique ranks in player's hand
 	for ri, rank in pairs(Card.RANK_FULL_NAMES) do
@@ -482,7 +497,7 @@ function GoFishInstance:_turn()
 	self:displayGame();
 end
 
-
+-- Parses the users choice
 function GoFishInstance:_parseTurn(text)
 	if (not text) then
 		self:_turn();
@@ -532,7 +547,7 @@ function GoFishInstance:_parseTurn(text)
 	self:_status();
 end
 
-
+-- Gets, validates, and executes the NPC's choice
 function GoFishInstance:_npcsTurn()
 	-- Check if game is over
 	if (self._npc.hand:count() <= 0 or self._player.hand:count() <= 0 or self.deck:count() <= 0) then
@@ -573,6 +588,7 @@ function GoFishInstance:_npcsTurn()
 	end
 end
 
+-- Fishing function for NPC
 function GoFishInstance:_npcGoFish()
 	local success, card = pcall(
 		function() return self:npcFish() end
@@ -596,6 +612,7 @@ function GoFishInstance:_npcGoFish()
 		self._npc.foundSets = self._npc.foundSets + 1;
 	end
 end
+-- Fishing function for player
 function GoFishInstance:_playerGoFish()
 	local success, card = pcall(
 		function() return self:playerFish() end
@@ -619,7 +636,6 @@ function GoFishInstance:_playerGoFish()
 		self._player.foundSets = self._player.foundSets + 1;
 	end
 end
-
 
 
 

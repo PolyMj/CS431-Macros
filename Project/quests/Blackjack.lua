@@ -7,9 +7,25 @@ WAGERS_FLAG = "-BJWagers";
 
 	-- Additions to Cards / Deck classes -- 
 --
+
+-- Returns the minimum value for a card (1 for ace)
 function Card:value()
 	if (self:isAce()) then
 		return 1;
+	elseif(self:isFace()) then
+		return 10;
+	elseif(self:isNumber()) then
+		return self:rankID();
+	else
+		print("ERROR: Joker recieved in blackjack");
+		return 0;
+	end
+end
+
+-- Returns the maximum value for a card (11 for ace)
+function Card:valueMax()
+	if (self:isAce()) then
+		return 11;
 	elseif(self:isFace()) then
 		return 10;
 	elseif(self:isNumber()) then
@@ -153,10 +169,17 @@ function BlackjackInstance.new(npc, client, required_payment)
 	return self;
 end
 
+-- Compares the current game's player to the client passed in
+function BlackjackInstance:isSamePlayer(client)
+	return (client:CharacterID() == self._player.char:CharacterID());
+end
+
+-- Generates a flag suffix using the NPC's name and the player's ID
 function BlackjackInstance:getFlagSuffix()
 	return self._dealer.char:GetCleanName() .. self._player.char:CharacterID();
 end
 
+-- Returns total winnings/wagers
 function BlackjackInstance:getWinnings(client)
 	client = client or self._player.char
 	local data = tonumber(client:GetBucket(WINNINGS_FLAG..self:getFlagSuffix())) or 0;
@@ -195,6 +218,7 @@ function BlackjackInstance.defaultDealerAI(self)
 	self._dealer.hand:addTop(self.deck:drawRandom());
 end
 
+-- Regenerates the dealer's hand. Tries to use custom AI first, otherwise uses default AI.
 function BlackjackInstance:getDealerHand()
 	self._dealer.hand = Deck.new(0,0);
 	
@@ -213,6 +237,7 @@ function BlackjackInstance:getDealerHand()
 	end
 end
 
+-- Adds a player hand. This function is used to ensure consistency with number of bets and hands. 
 function BlackjackInstance:addPlayerHand(hand, bet)
 	table.insert(self._player.hands, hand);
 	table.insert(self._player.bets, (bet or 0));
@@ -253,6 +278,7 @@ function BlackjackInstance:go(text, client)
 	self:_STAGE(text);
 end
 
+-- Exits and saves the game (if the game is still ongoing)
 function BlackjackInstance:exit()
 	if (self.status ~= BlackjackInstance.STATUS.ONGOING) then
 		return;
@@ -279,12 +305,14 @@ function BlackjackInstance:exit()
 	self.status = BlackjackInstance.STATUS.UNSTARTED;
 end
 
+-- Deletes save data
 function BlackjackInstance:_deleteBucket()
 	local FLAG = BLACKJACK_FLAG .. self:getFlagSuffix();
 	self:Cashout();
 	self._player.char:DeleteBucket(FLAG);
 end
 
+-- Tries to load save data from a bucket. Defaults to new game
 function BlackjackInstance:_fromBucket(npc, client)
 	local FLAG = BLACKJACK_FLAG .. npc:GetCleanName() .. client:CharacterID();
 	local data = client:GetBucket(FLAG);
@@ -306,6 +334,7 @@ function BlackjackInstance:_fromBucket(npc, client)
 	client:DeleteBucket(FLAG);
 end
 
+-- Parses game save data from buckets
 function BlackjackInstance:_parseBucket(data)
 	if (#data < 1) then return false end
 
@@ -344,7 +373,7 @@ function BlackjackInstance:_parseBucket(data)
 	end
 end
 
-
+-- Initialize a new game
 function BlackjackInstance:_initializeGame(text)
 	-- Exit
 	if (text and text == "Cashout") then
@@ -386,7 +415,7 @@ function BlackjackInstance:_initializeGame(text)
 	self:_status();
 end
 
-
+-- Displays current game state
 function BlackjackInstance:displayGame()
 	local dia_string = "{title: Blackjack with " .. self._dealer.char:GetCleanName() .. "} ";
 
@@ -465,7 +494,7 @@ function BlackjackInstance:displayGame()
 	self._outText.optionsPrompt = "";
 end
 
-
+-- Checks the status of the game and displays it
 function BlackjackInstance:_status()
 	for i,hand in pairs(self._player.hands) do
 		local value = hand:optimalValue();
@@ -527,7 +556,7 @@ function BlackjackInstance:_turn()
 	self:displayGame();
 end
 
-
+-- Parses the users choice
 function BlackjackInstance:_parseTurn(text)
 	if (not text) then
 		self:_turn();
@@ -552,7 +581,7 @@ function BlackjackInstance:_parseTurn(text)
 	end
 end
 
-
+-- Promts the user to select which hand they'd like to split
 function BlackjackInstance:_split(text)
 	if (text and text == "Back") then
 		self:_turn();
@@ -580,7 +609,7 @@ function BlackjackInstance:_split(text)
 	self:_buySplit();
 end
 
-
+-- Promts the user to place their bet on the new hand
 function BlackjackInstance:_buySplit(text)
 	local hand = self._player.hands[self._hand_selection];
 	local bet = self._player.bets[self._hand_selection]
@@ -615,7 +644,7 @@ function BlackjackInstance:_buySplit(text)
 end
 
 
-
+-- Adds a card to the hand of the player's choice
 function BlackjackInstance:_hit(text)
 	if (text and text == "Back") then
 		self:_turn();
@@ -655,6 +684,7 @@ function BlackjackInstance:_hit(text)
 	self:_status();
 end
 
+-- Checks if a hand wins/loses/draws and pays the user accordningly
 function BlackjackInstance:_stand(text)
 	if (text and text == "Back") then
 		self:_turn();
@@ -700,7 +730,7 @@ function BlackjackInstance:_checkStand(hand_index)
 	end
 end
 
-
+-- Removes a hand and its bet, pays the user by their bet times return_factor, and stores a message of the hand's result
 function BlackjackInstance:_finishHand(index, return_factor, message)
 	if (index > 0 and index <= #self._player.hands) then
 		-- Pay back player return_facotor * their bet
